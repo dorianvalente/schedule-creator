@@ -24,7 +24,7 @@
     },
     "team": {
       "type": "string",
-      "description": "Team this agent belongs to. Auto-assign pairs each manager with agents on their own team first"
+      "description": "Name of the manager whose team this agent is on. Auto-assign pairs each manager with their own agents first"
     },
     "active": {
       "type": "boolean",

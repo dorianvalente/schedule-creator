@@ -60,9 +60,10 @@ export function effectiveRole(agent, now = new Date()) {
   return tenureFromDate(agent.created_date, now);
 }
 
-// Normalized team name, used to match a manager with their own agents.
-export function teamKey(agent) {
-  return String(agent?.team || "").trim().toLowerCase();
+// An agent is on a manager's team when their Team field names that manager.
+export function onTeamOf(agent, manager) {
+  const team = String(agent?.team || "").trim().toLowerCase();
+  return !!team && team === String(manager?.name || "").trim().toLowerCase();
 }
 
 export function pairingTypeFor(agent1, agent2) {
@@ -87,8 +88,7 @@ export function autoAssign(agents) {
   const taken = new Set();
   const unpairedManagers = [];
   for (const m of managers) {
-    const team = teamKey(m.agent);
-    const idx = team ? pool.findIndex((x) => !taken.has(x.agent.id) && teamKey(x.agent) === team) : -1;
+    const idx = pool.findIndex((x) => !taken.has(x.agent.id) && onTeamOf(x.agent, m.agent));
     if (idx === -1) {
       unpairedManagers.push(m);
       continue;

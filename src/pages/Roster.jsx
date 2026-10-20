@@ -89,6 +89,11 @@ export default function Roster() {
     return a.name.localeCompare(b.name);
   });
 
+  const managerNames = agents
+    .filter((a) => effectiveRole(a) === "manager")
+    .map((a) => a.name)
+    .sort((a, b) => a.localeCompare(b));
+
   const counts = {
     manager: agents.filter((a) => effectiveRole(a) === "manager").length,
     one_month: agents.filter((a) => effectiveRole(a) === "one_month").length,
@@ -152,15 +157,20 @@ export default function Roster() {
                 ))}
               </select>
             </div>
-            <div className="sm:w-40">
+            <div className="sm:w-48">
               <label className="mb-1 block text-xs font-medium text-gray-500">Team</label>
-              <input
+              <select
                 value={draft.team}
                 onChange={(e) => setDraft({ ...draft, team: e.target.value })}
-                onKeyDown={(e) => e.key === "Enter" && addAgent()}
-                placeholder="e.g. Team A"
-                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#111111]"
-              />
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
+              >
+                <option value="">No team</option>
+                {managerNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex gap-2">
               <button
@@ -232,13 +242,21 @@ export default function Roster() {
                 </td>
                 <td className="px-4 py-3">
                   {editingId === agent.id ? (
-                    <input
+                    <select
                       value={editDraft.team}
                       onChange={(e) => setEditDraft({ ...editDraft, team: e.target.value })}
-                      onKeyDown={(e) => e.key === "Enter" && saveEdit(agent.id)}
-                      placeholder="Team"
-                      className="w-full rounded-md border border-gray-200 px-2 py-1 text-sm outline-none focus:border-[#111111]"
-                    />
+                      className="w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-sm outline-none focus:border-[#111111]"
+                    >
+                      <option value="">No team</option>
+                      {managerNames.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                      {editDraft.team && !managerNames.includes(editDraft.team) && (
+                        <option value={editDraft.team}>{editDraft.team}</option>
+                      )}
+                    </select>
                   ) : agent.team ? (
                     <span className="text-gray-600">{agent.team}</span>
                   ) : (
