@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { UserPlus, Trash2, Pencil, X, Check } from "lucide-react";
+import { UserPlus, Trash2, Pencil, X, Check, Upload } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS } from "@/lib/scheduler";
+import ImportAgentsDialog from "@/components/ImportAgentsDialog";
 
 const ROLE_STYLES = {
   manager: "bg-[#111111] text-white",
@@ -15,6 +16,7 @@ export default function Roster() {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [draft, setDraft] = useState({ name: "", role: "new" });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: "", role: "new" });
@@ -83,13 +85,22 @@ export default function Roster() {
             {counts.manager} managers · {counts.new} new · {counts.tenured} tenured
           </p>
         </div>
-        <button
-          onClick={() => setShowForm((s) => !s)}
-          className="inline-flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333]"
-        >
-          <UserPlus className="h-4 w-4" />
-          Add Agent
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#111111] transition-colors hover:bg-gray-50"
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </button>
+          <button
+            onClick={() => setShowForm((s) => !s)}
+            className="inline-flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333]"
+          >
+            <UserPlus className="h-4 w-4" />
+            Add Agent
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -226,6 +237,10 @@ export default function Roster() {
           </tbody>
         </table>
       </div>
+
+      {showImport && (
+        <ImportAgentsDialog onClose={() => setShowImport(false)} onImported={loadAgents} />
+      )}
     </div>
   );
 }
