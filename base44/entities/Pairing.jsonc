@@ -1,0 +1,36 @@
+{
+  "name": "Pairing",
+  "type": "object",
+  "properties": {
+    "week_start": {
+      "type": "string",
+      "description": "ISO date of the Monday starting the schedule week"
+    },
+    "day": {
+      "type": "string",
+      "description": "Which ride day of the week",
+      "enum": [
+        "Tuesday",
+        "Thursday"
+      ]
+    },
+    "agent1_id": {
+      "type": "string",
+      "description": "First agent in the pairing"
+    },
+    "agent2_id": {
+      "type": "string",
+      "description": "Second agent in the pairing (null for solo)"
+    },
+    "sort_order": {
+      "type": "number",
+      "description": "Display order within the day",
+      "default": 0
+    }
+  },
+  "required": [
+    "week_start",
+    "day",
+    "agent1_id"
+  ]
+}

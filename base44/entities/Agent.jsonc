@@ -1,0 +1,28 @@
+{
+  "name": "Agent",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Agent display name"
+    },
+    "role": {
+      "type": "string",
+      "description": "Tenure / role tier used for pairing",
+      "enum": [
+        "manager",
+        "new",
+        "tenured"
+      ]
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Whether the agent is included in auto-assign",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "role"
+  ]
+}
