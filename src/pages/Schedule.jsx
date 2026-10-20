@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { addDays, addWeeks, format, startOfWeek } from "date-fns";
 import { Sparkles, Save, ChevronLeft, ChevronRight, Plus, X, UserCircle2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { autoAssign, ROLE_LABELS, pairingTypeFor } from "@/lib/scheduler";
+import { autoAssign, ROLE_LABELS, effectiveRole, pairingTypeFor } from "@/lib/scheduler";
 
 const ROLE_DOT = {
   manager: "bg-[#111111]",
@@ -288,7 +288,7 @@ function DayColumn({ day, date, pairings, agents, usedIds, agentById, busy, onUp
             <div className="flex flex-wrap gap-1.5">
               {unassigned.map((a) => (
                 <span key={a.id} className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs text-gray-600 ring-1 ring-gray-200">
-                  <span className={`h-1.5 w-1.5 rounded-full ${ROLE_DOT[a.role]}`} />
+                  <span className={`h-1.5 w-1.5 rounded-full ${ROLE_DOT[effectiveRole(a)]}`} />
                   {a.name}
                 </span>
               ))}
@@ -313,7 +313,7 @@ function AgentSelect({ value, agents, usedIds, allowSolo, onChange }) {
         {allowSolo && <option value="__solo__">Solo</option>}
         {options.map((a) => (
           <option key={a.id} value={a.id}>
-            {a.name} · {ROLE_LABELS[a.role]}
+            {a.name} · {ROLE_LABELS[effectiveRole(a)]}
           </option>
         ))}
       </select>

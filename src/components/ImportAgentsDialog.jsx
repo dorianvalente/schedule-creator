@@ -1,14 +1,7 @@
 import { useRef, useState } from "react";
 import { Upload, ClipboardList, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-
-const ROLE_OPTIONS = [
-  { value: "one_month", label: "1 Month Agent" },
-  { value: "sna", label: "SNA" },
-  { value: "rpa", label: "RPA" },
-  { value: "tenured", label: "Tenured Agent" },
-  { value: "manager", label: "Manager" },
-];
+import { TENURE_OPTIONS } from "@/lib/scheduler";
 
 function normalizeRole(value) {
   const v = String(value || "").toLowerCase();
@@ -17,7 +10,8 @@ function normalizeRole(value) {
   if (v.includes("sna")) return "sna";
   if (v.includes("rpa")) return "rpa";
   if (v.includes("month")) return "one_month";
-  return "one_month";
+  if (v.includes("auto")) return "auto";
+  return null;
 }
 
 export default function ImportAgentsDialog({ onClose, onImported }) {
@@ -35,7 +29,7 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
     setRows((prev) =>
       names.map((name, i) => ({
         name,
-        role: prev[i]?.name === name ? prev[i].role : "one_month",
+        role: prev[i]?.name === name ? prev[i].role : "auto",
       }))
     );
   };
@@ -50,7 +44,7 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
       .map((line) => {
         const [name, role] = line.split(",").map((c) => c.trim());
         if (!name) return null;
-        return { name, role: normalizeRole(role) };
+        return { name, role: normalizeRole(role) || "auto" };
       })
       .filter(Boolean);
   };
@@ -76,7 +70,12 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
     if (!pending.length) return;
     setImporting(true);
     try {
-      await base44.entities.Agent.bulkCreate(pending.map((a) => ({ name: a.name, role: a.role, active: true })));
+      await base44.entities.Agent.bulkCreate(
+        pending.map((a) => {
+          const isAuto = a.role === "auto";
+          return { name: a.name, role: isAuto ? "one_month" : a.role, manual_role: !isAuto, active: true };
+        })
+      );
       onImported();
       onClose();
     } finally {
@@ -154,7 +153,7 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
                       onChange={(e) => setRowRole(i, e.target.value)}
                       className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm outline-none focus:border-[#111111]"
                     >
-                      {ROLE_OPTIONS.map((o) => (
+                      {TENURE_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>
                           {o.label}
                         </option>

@@ -17,6 +17,11 @@
         "tenured"
       ]
     },
+    "manual_role": {
+      "type": "boolean",
+      "description": "When true the stored role is used as-is; otherwise tenure is calculated from the date the agent was added",
+      "default": false
+    },
     "active": {
       "type": "boolean",
       "description": "Whether the agent is included in auto-assign",

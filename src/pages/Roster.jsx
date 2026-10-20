@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { UserPlus, Trash2, Pencil, X, Check, Upload } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { ROLE_LABELS } from "@/lib/scheduler";
+import { ROLE_LABELS, ROLE_ORDER, TENURE_OPTIONS, effectiveRole } from "@/lib/scheduler";
 import ImportAgentsDialog from "@/components/ImportAgentsDialog";
 
 const ROLE_STYLES = {
@@ -12,16 +12,14 @@ const ROLE_STYLES = {
   tenured: "bg-emerald-100 text-emerald-800 border border-emerald-200",
 };
 
-const ROLE_ORDER = { manager: 0, one_month: 1, sna: 2, rpa: 3, tenured: 4 };
-
 export default function Roster() {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [draft, setDraft] = useState({ name: "", role: "new" });
+  const [draft, setDraft] = useState({ name: "", role: "auto" });
   const [editingId, setEditingId] = useState(null);
-  const [editDraft, setEditDraft] = useState({ name: "", role: "new" });
+  const [editDraft, setEditDraft] = useState({ name: "", role: "auto" });
 
   const loadAgents = async () => {
     setLoading(true);
@@ -39,20 +37,34 @@ export default function Roster() {
 
   const addAgent = async () => {
     if (!draft.name.trim()) return;
-    await base44.entities.Agent.create({ name: draft.name.trim(), role: draft.role, active: true });
-    setDraft({ name: "", role: "new" });
+    const isAuto = draft.role === "auto";
+    await base44.entities.Agent.create({
+      name: draft.name.trim(),
+      role: isAuto ? "one_month" : draft.role,
+      manual_role: !isAuto,
+      active: true,
+    });
+    setDraft({ name: "", role: "auto" });
     setShowForm(false);
     loadAgents();
   };
 
   const startEdit = (agent) => {
     setEditingId(agent.id);
-    setEditDraft({ name: agent.name, role: agent.role });
+    setEditDraft({
+      name: agent.name,
+      role: agent.role === "manager" || agent.manual_role ? agent.role : "auto",
+    });
   };
 
   const saveEdit = async (id) => {
     if (!editDraft.name.trim()) return;
-    await base44.entities.Agent.update(id, { name: editDraft.name.trim(), role: editDraft.role });
+    const isAuto = editDraft.role === "auto";
+    await base44.entities.Agent.update(id, {
+      name: editDraft.name.trim(),
+      role: isAuto ? "one_month" : editDraft.role,
+      manual_role: !isAuto,
+    });
     setEditingId(null);
     loadAgents();
   };
@@ -68,16 +80,18 @@ export default function Roster() {
   };
 
   const sorted = [...agents].sort((a, b) => {
-    if (ROLE_ORDER[a.role] !== ROLE_ORDER[b.role]) return ROLE_ORDER[a.role] - ROLE_ORDER[b.role];
+    const ra = effectiveRole(a);
+    const rb = effectiveRole(b);
+    if (ROLE_ORDER[ra] !== ROLE_ORDER[rb]) return ROLE_ORDER[ra] - ROLE_ORDER[rb];
     return a.name.localeCompare(b.name);
   });
 
   const counts = {
-    manager: agents.filter((a) => a.role === "manager").length,
-    one_month: agents.filter((a) => a.role === "one_month").length,
-    sna: agents.filter((a) => a.role === "sna").length,
-    rpa: agents.filter((a) => a.role === "rpa").length,
-    tenured: agents.filter((a) => a.role === "tenured").length,
+    manager: agents.filter((a) => effectiveRole(a) === "manager").length,
+    one_month: agents.filter((a) => effectiveRole(a) === "one_month").length,
+    sna: agents.filter((a) => effectiveRole(a) === "sna").length,
+    rpa: agents.filter((a) => effectiveRole(a) === "rpa").length,
+    tenured: agents.filter((a) => effectiveRole(a) === "tenured").length,
   };
 
   return (
@@ -128,11 +142,11 @@ export default function Roster() {
                 onChange={(e) => setDraft({ ...draft, role: e.target.value })}
                 className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
               >
-                <option value="one_month">1 Month Agent</option>
-                <option value="sna">SNA</option>
-                <option value="rpa">RPA</option>
-                <option value="tenured">Tenured Agent</option>
-                <option value="manager">Manager</option>
+                {TENURE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex gap-2">
@@ -190,15 +204,15 @@ export default function Roster() {
                       onChange={(e) => setEditDraft({ ...editDraft, role: e.target.value })}
                       className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm outline-none focus:border-[#111111]"
                     >
-                      <option value="one_month">1 Month Agent</option>
-                      <option value="sna">SNA</option>
-                      <option value="rpa">RPA</option>
-                      <option value="tenured">Tenured Agent</option>
-                      <option value="manager">Manager</option>
+                      {TENURE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
                     </select>
                   ) : (
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_STYLES[agent.role]}`}>
-                      {ROLE_LABELS[agent.role]}
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_STYLES[effectiveRole(agent)]}`}>
+                      {ROLE_LABELS[effectiveRole(agent)]}
                     </span>
                   )}
                 </td>
