@@ -10,6 +10,7 @@ const ROLE_STYLES = {
   sna: "bg-sky-100 text-sky-800 border border-sky-200",
   rpa: "bg-violet-100 text-violet-800 border border-violet-200",
   tenured: "bg-emerald-100 text-emerald-800 border border-emerald-200",
+  veteran: "bg-indigo-100 text-indigo-800 border border-indigo-200",
 };
 
 export default function Roster() {
@@ -106,6 +107,7 @@ export default function Roster() {
     sna: agents.filter((a) => effectiveRole(a) === "sna").length,
     rpa: agents.filter((a) => effectiveRole(a) === "rpa").length,
     tenured: agents.filter((a) => effectiveRole(a) === "tenured").length,
+    veteran: agents.filter((a) => effectiveRole(a) === "veteran").length,
   };
 
   return (
@@ -114,7 +116,7 @@ export default function Roster() {
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111]">Roster</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {counts.manager} managers · {counts.one_month} 1 Month · {counts.sna} SNA · {counts.rpa} RPA · {counts.tenured} tenured
+            {counts.manager} managers · {counts.one_month} 1 Month · {counts.sna} SNA · {counts.rpa} RPA · {counts.tenured} tenured · {counts.veteran} veteran
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -6,6 +6,7 @@ import { TENURE_OPTIONS, formatName } from "@/lib/scheduler";
 function normalizeRole(value) {
   const v = String(value || "").toLowerCase();
   if (v.includes("manag")) return "manager";
+  if (v.includes("vet")) return "veteran";
   if (v.includes("ten")) return "tenured";
   if (v.includes("sna")) return "sna";
   if (v.includes("rpa")) return "rpa";

@@ -6,6 +6,7 @@ const ROLE_CELL = {
   sna: "border-sky-200 bg-sky-50 text-sky-900",
   rpa: "border-violet-200 bg-violet-50 text-violet-900",
   tenured: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  veteran: "border-indigo-200 bg-indigo-50 text-indigo-900",
 };
 
 const ROLE_ROW = {
@@ -14,6 +15,7 @@ const ROLE_ROW = {
   sna: "bg-sky-50",
   rpa: "bg-violet-50",
   tenured: "bg-emerald-50",
+  veteran: "bg-indigo-50",
 };
 
 export default function ScheduleTable({

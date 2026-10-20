@@ -1,6 +1,6 @@
 // Pure auto-assign logic for ride-along pairings.
 // Roles: 'manager' | 'one_month' | 'sna' | 'rpa' | 'tenured'
-// Tenure ladder (least to most experienced): 1 Month Agent -> SNA -> RPA -> Tenured Agent.
+// Tenure ladder (least to most experienced): 1 Month Agent -> SNA -> RPA -> Tenured Agent -> Veteran.
 // Managers pair with the least experienced agents first; the rest are paired
 // least-experienced with most-experienced.
 
@@ -10,9 +10,10 @@ export const ROLE_LABELS = {
   sna: "SNA",
   rpa: "RPA",
   tenured: "Tenured Agent",
+  veteran: "Veteran",
 };
 
-export const ROLE_ORDER = { manager: 0, one_month: 1, sna: 2, rpa: 3, tenured: 4 };
+export const ROLE_ORDER = { manager: 0, one_month: 1, sna: 2, rpa: 3, tenured: 4, veteran: 5 };
 
 // Tenure options for pickers. "auto" means "calculate from the date added".
 export const TENURE_OPTIONS = [
@@ -21,6 +22,7 @@ export const TENURE_OPTIONS = [
   { value: "sna", label: "SNA" },
   { value: "rpa", label: "RPA" },
   { value: "tenured", label: "Tenured Agent" },
+  { value: "veteran", label: "Veteran" },
   { value: "manager", label: "Manager" },
 ];
 
@@ -30,6 +32,7 @@ const TENURE_STEPS = [
   { months: 1, role: "sna" },
   { months: 4, role: "rpa" },
   { months: 6, role: "tenured" },
+  { months: 24, role: "veteran" },
 ];
 
 // Whole months elapsed since a date.
