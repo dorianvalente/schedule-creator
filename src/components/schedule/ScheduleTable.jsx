@@ -8,6 +8,14 @@ const ROLE_CELL = {
   tenured: "border-emerald-200 bg-emerald-50 text-emerald-900",
 };
 
+const ROLE_ROW = {
+  manager: "bg-[#f4f4f5]",
+  one_month: "bg-amber-50",
+  sna: "bg-sky-50",
+  rpa: "bg-violet-50",
+  tenured: "bg-emerald-50",
+};
+
 export default function ScheduleTable({ agents, days, partnerIdFor, agentById, onSetPartner, onClear, busy }) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -54,13 +62,17 @@ export default function ScheduleTable({ agents, days, partnerIdFor, agentById, o
 
             {agents.map((a) => (
               <tr key={a.id} className="border-b border-gray-100 last:border-0 hover:bg-[#fafafa]">
-                <td className="whitespace-nowrap px-4 py-2.5 text-sm font-medium text-[#111111]">
+                <td
+                  className={`whitespace-nowrap px-4 py-1.5 text-sm font-medium text-[#111111] ${
+                    ROLE_ROW[effectiveRole(a)]
+                  }`}
+                >
                   {a.name}
                 </td>
                 {days.map((d) => {
                   const partnerId = partnerIdFor(d.key, a.id);
                   return (
-                    <td key={d.key} className="px-4 py-2.5">
+                    <td key={d.key} className="px-4 py-1.5">
                       <PartnerSelect
                         value={partnerId}
                         partner={partnerId ? agentById(partnerId) : null}
