@@ -22,6 +22,10 @@
       "description": "When true the stored role is used as-is; otherwise tenure is calculated from the date the agent was added",
       "default": false
     },
+    "team": {
+      "type": "string",
+      "description": "Team this agent belongs to. Auto-assign pairs each manager with agents on their own team first"
+    },
     "active": {
       "type": "boolean",
       "description": "Whether the agent is included in auto-assign",

@@ -17,9 +17,9 @@ export default function Roster() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [draft, setDraft] = useState({ name: "", role: "auto" });
+  const [draft, setDraft] = useState({ name: "", role: "auto", team: "" });
   const [editingId, setEditingId] = useState(null);
-  const [editDraft, setEditDraft] = useState({ name: "", role: "auto" });
+  const [editDraft, setEditDraft] = useState({ name: "", role: "auto", team: "" });
 
   const loadAgents = async () => {
     setLoading(true);
@@ -42,9 +42,10 @@ export default function Roster() {
       name: draft.name.trim(),
       role: isAuto ? "one_month" : draft.role,
       manual_role: !isAuto,
+      team: draft.team.trim(),
       active: true,
     });
-    setDraft({ name: "", role: "auto" });
+    setDraft({ name: "", role: "auto", team: "" });
     setShowForm(false);
     loadAgents();
   };
@@ -54,6 +55,7 @@ export default function Roster() {
     setEditDraft({
       name: agent.name,
       role: agent.role === "manager" || agent.manual_role ? agent.role : "auto",
+      team: agent.team || "",
     });
   };
 
@@ -64,6 +66,7 @@ export default function Roster() {
       name: editDraft.name.trim(),
       role: isAuto ? "one_month" : editDraft.role,
       manual_role: !isAuto,
+      team: editDraft.team.trim(),
     });
     setEditingId(null);
     loadAgents();
@@ -149,6 +152,16 @@ export default function Roster() {
                 ))}
               </select>
             </div>
+            <div className="sm:w-40">
+              <label className="mb-1 block text-xs font-medium text-gray-500">Team</label>
+              <input
+                value={draft.team}
+                onChange={(e) => setDraft({ ...draft, team: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && addAgent()}
+                placeholder="e.g. Team A"
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#111111]"
+              />
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={addAgent}
@@ -173,6 +186,7 @@ export default function Roster() {
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Tenure</th>
+              <th className="px-4 py-3 font-medium">Team</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 text-right font-medium">Actions</th>
             </tr>
@@ -180,7 +194,7 @@ export default function Roster() {
           <tbody className="divide-y divide-gray-100">
             {loading && (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
+                <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
               </tr>
             )}
             {!loading && sorted.map((agent) => (
@@ -214,6 +228,21 @@ export default function Roster() {
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_STYLES[effectiveRole(agent)]}`}>
                       {ROLE_LABELS[effectiveRole(agent)]}
                     </span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {editingId === agent.id ? (
+                    <input
+                      value={editDraft.team}
+                      onChange={(e) => setEditDraft({ ...editDraft, team: e.target.value })}
+                      onKeyDown={(e) => e.key === "Enter" && saveEdit(agent.id)}
+                      placeholder="Team"
+                      className="w-full rounded-md border border-gray-200 px-2 py-1 text-sm outline-none focus:border-[#111111]"
+                    />
+                  ) : agent.team ? (
+                    <span className="text-gray-600">{agent.team}</span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -251,7 +280,7 @@ export default function Roster() {
             ))}
             {!loading && sorted.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-sm text-gray-400">
+                <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">
                   No agents yet. Add your first agent to start building schedules.
                 </td>
               </tr>

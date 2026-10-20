@@ -60,6 +60,11 @@ export function effectiveRole(agent, now = new Date()) {
   return tenureFromDate(agent.created_date, now);
 }
 
+// Normalized team name, used to match a manager with their own agents.
+export function teamKey(agent) {
+  return String(agent?.team || "").trim().toLowerCase();
+}
+
 export function pairingTypeFor(agent1, agent2) {
   if (!agent2) return "Solo";
   const roles = [effectiveRole(agent1), effectiveRole(agent2)].sort((a, b) => ROLE_ORDER[a] - ROLE_ORDER[b]);
@@ -76,18 +81,36 @@ export function autoAssign(agents) {
   const pairings = [];
   const used = new Set();
 
-  // 1. Managers pair with the least experienced available agents
+  // 1a. Managers who have agents on their own team are matched first, so a
+  //     manager never loses their own agent to another pairing.
   const pool = [...others];
+  const taken = new Set();
+  const unpairedManagers = [];
   for (const m of managers) {
-    if (pool.length > 0) {
-      const junior = pool.shift();
-      pairings.push({ agent1: m.agent, agent2: junior.agent });
-      used.add(m.agent.id).add(junior.agent.id);
+    const team = teamKey(m.agent);
+    const idx = team ? pool.findIndex((x) => !taken.has(x.agent.id) && teamKey(x.agent) === team) : -1;
+    if (idx === -1) {
+      unpairedManagers.push(m);
+      continue;
     }
+    const mate = pool[idx];
+    taken.add(mate.agent.id);
+    pairings.push({ agent1: m.agent, agent2: mate.agent });
+    used.add(m.agent.id).add(mate.agent.id);
+  }
+
+  // 1b. The remaining managers take the least experienced agents still free.
+  for (const m of unpairedManagers) {
+    const idx = pool.findIndex((x) => !taken.has(x.agent.id));
+    if (idx === -1) break;
+    const mate = pool[idx];
+    taken.add(mate.agent.id);
+    pairings.push({ agent1: m.agent, agent2: mate.agent });
+    used.add(m.agent.id).add(mate.agent.id);
   }
 
   // 2. Remaining agents pair least-experienced with most-experienced
-  const remaining = pool.filter((x) => !used.has(x.agent.id));
+  const remaining = pool.filter((x) => !taken.has(x.agent.id));
   let lo = 0;
   let hi = remaining.length - 1;
   while (lo < hi) {
