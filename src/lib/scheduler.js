@@ -86,6 +86,19 @@ export function exclusionKeys(exclusions = []) {
   return new Set((exclusions || []).map((e) => pairKey(e.agent1_id, e.agent2_id)));
 }
 
+// Preferred pairings as agent id -> set of the agent ids they ride best with.
+export function preferredMap(pairings = []) {
+  const map = new Map();
+  (pairings || []).forEach((p) => {
+    if (!p?.agent1_id || !p?.agent2_id) return;
+    if (!map.has(p.agent1_id)) map.set(p.agent1_id, new Set());
+    if (!map.has(p.agent2_id)) map.set(p.agent2_id, new Set());
+    map.get(p.agent1_id).add(p.agent2_id);
+    map.get(p.agent2_id).add(p.agent1_id);
+  });
+  return map;
+}
+
 // An agent is on a manager's team when their Team field names that manager.
 export function onTeamOf(agent, manager) {
   const team = String(agent?.team || "").trim().toLowerCase();
@@ -101,10 +114,12 @@ export function pairingTypeFor(agent1, agent2) {
 // Builds the week's pairings. `agentsPerManager` is how many agents a manager
 // rides with over the week: 1 = the same agent both days, 2 = the newest agent
 // on their team on Tuesday and the next newest on Thursday.
-export function autoAssign(agents, agentsPerManager = 1, exclusions = []) {
+export function autoAssign(agents, agentsPerManager = 1, exclusions = [], preferred = []) {
   const count = agentsPerManager === 2 ? 2 : 1;
   const blocked = exclusionKeys(exclusions);
   const isBlocked = (aId, bId) => blocked.has(pairKey(aId, bId));
+  const wishes = preferredMap(preferred);
+  const prefers = (aId, bId) => !!wishes.get(aId)?.has(bId);
   const withRole = agents.map((agent) => ({ agent, role: effectiveRole(agent) }));
   const managers = withRole.filter((x) => x.role === "manager");
   const others = withRole
@@ -115,14 +130,37 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = []) {
   const tuesday = [];
   const thursday = [];
 
-  // 1a. Each manager takes their own team's newest agents first, so a manager
+  // 1. Preferred pairings come first: whenever both agents are free and are not
+  //    excluded from each other, they ride together.
+  for (let i = 0; i < others.length; i++) {
+    if (taken.has(others[i].agent.id)) continue;
+    const match = others.findIndex(
+      (x, k) =>
+        k > i &&
+        !taken.has(x.agent.id) &&
+        prefers(others[i].agent.id, x.agent.id) &&
+        !isBlocked(others[i].agent.id, x.agent.id)
+    );
+    if (match === -1) continue;
+    const a1 = others[i].agent;
+    const a2 = others[match].agent;
+    tuesday.push({ agent1: a1, agent2: a2 });
+    thursday.push({ agent1: a1, agent2: a2 });
+    taken.add(a1.id).add(a2.id);
+  }
+
+  // 2a. Each manager takes their own team's newest agents first, so a manager
   //     never loses their own agent to another pairing.
   const picked = new Map();
   for (const m of managers) {
     const mates = [];
     const team = others
       .filter((x) => !taken.has(x.agent.id) && onTeamOf(x.agent, m.agent) && !isBlocked(x.agent.id, m.agent.id))
-      .sort((a, b) => new Date(b.agent.created_date) - new Date(a.agent.created_date));
+      .sort(
+        (a, b) =>
+          Number(prefers(m.agent.id, b.agent.id)) - Number(prefers(m.agent.id, a.agent.id)) ||
+          new Date(b.agent.created_date) - new Date(a.agent.created_date)
+      );
     for (const c of team) {
       if (mates.length >= count) break;
       taken.add(c.agent.id);
@@ -131,10 +169,14 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = []) {
     picked.set(m.agent.id, mates);
   }
 
-  // 1b. Fill any open slots from the least experienced agents still free.
+  // 2b. Fill any open slots from the least experienced agents still free.
   for (const m of managers) {
     const mates = picked.get(m.agent.id);
-    for (const c of others) {
+    // A preferred partner is taken before the usual least-experienced fill.
+    const candidates = [...others].sort(
+      (a, b) => Number(prefers(m.agent.id, b.agent.id)) - Number(prefers(m.agent.id, a.agent.id))
+    );
+    for (const c of candidates) {
       if (mates.length >= count) break;
       if (taken.has(c.agent.id)) continue;
       if (isBlocked(c.agent.id, m.agent.id)) continue;
@@ -147,15 +189,15 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = []) {
     thursday.push({ agent1: m.agent, agent2: mates[1] || mates[0] });
   }
 
-  // 2. Remaining agents pair least-experienced with most-experienced. An
+  // 3. Remaining agents pair least-experienced with most-experienced. An
   //    excluded pair is skipped and the least experienced agent looks further
   //    down the list for a partner instead.
-  const pool = others.filter((x) => !taken.has(x.agent.id));
-  while (pool.length > 1) {
-    const first = pool.shift();
+  const rest = others.filter((x) => !taken.has(x.agent.id));
+  while (rest.length > 1) {
+    const first = rest.shift();
     let pick = -1;
-    for (let i = pool.length - 1; i >= 0; i--) {
-      if (!isBlocked(first.agent.id, pool[i].agent.id)) {
+    for (let i = rest.length - 1; i >= 0; i--) {
+      if (!isBlocked(first.agent.id, rest[i].agent.id)) {
         pick = i;
         break;
       }
@@ -165,13 +207,13 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = []) {
       thursday.push({ agent1: first.agent, agent2: null });
       continue;
     }
-    const second = pool.splice(pick, 1)[0];
+    const second = rest.splice(pick, 1)[0];
     tuesday.push({ agent1: first.agent, agent2: second.agent });
     thursday.push({ agent1: first.agent, agent2: second.agent });
     taken.add(first.agent.id).add(second.agent.id);
   }
 
-  // 3. Any leftover agent goes solo
+  // 4. Any leftover agent goes solo
   for (const a of agents) {
     if (taken.has(a.id)) continue;
     tuesday.push({ agent1: a, agent2: null });

@@ -22,6 +22,7 @@ export default function Schedule() {
   const [saving, setSaving] = useState(false);
   const [agentsPerManager, setAgentsPerManager] = useState(1);
   const [exclusions, setExclusions] = useState([]);
+  const [preferred, setPreferred] = useState([]);
 
   const weekKey = format(weekStart, "yyyy-MM-dd");
 
@@ -63,6 +64,9 @@ export default function Schedule() {
     base44.entities.Exclusion.list().then((rows) =>
       setExclusions(Array.isArray(rows) ? rows : rows?.items || [])
     );
+    base44.entities.PreferredPairing.list().then((rows) =>
+      setPreferred(Array.isArray(rows) ? rows : rows?.items || [])
+    );
   }, []);
 
   useEffect(() => {
@@ -73,7 +77,7 @@ export default function Schedule() {
   const dateFor = (day) => addDays(weekStart, DAY_OFFSETS[day]);
 
   const runAutoAssign = () => {
-    const result = autoAssign(agents, agentsPerManager, exclusions);
+    const result = autoAssign(agents, agentsPerManager, exclusions, preferred);
     const build = (list) =>
       list.map((p) => ({
         id: nextId(),

@@ -8,7 +8,7 @@ const navItems = [
   { to: "/roster", label: "Roster", icon: Users, end: false },
 ];
 
-const ADMIN_ITEM = { to: "/exclusions", label: "Exclusions", icon: Ban, end: false };
+const ADMIN_ITEM = { to: "/exclusions", label: "Admin", icon: Ban, end: false };
 
 export default function Layout() {
   const [isAdmin, setIsAdmin] = useState(false);

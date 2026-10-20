@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { pairKey } from "@/lib/scheduler";
-import ExclusionForm from "@/components/exclusions/ExclusionForm";
-import ExclusionList from "@/components/exclusions/ExclusionList";
+import PairForm from "@/components/admin/PairForm";
+import PairList from "@/components/admin/PairList";
+
+const hasPair = (rows, a, b) => rows.some((r) => pairKey(r.agent1_id, r.agent2_id) === pairKey(a, b));
+const keysOf = (rows) => new Set(rows.map((r) => pairKey(r.agent1_id, r.agent2_id)));
+const asArray = (res) => (Array.isArray(res) ? res : res?.items || []);
 
 export default function Exclusions() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [agents, setAgents] = useState([]);
   const [exclusions, setExclusions] = useState([]);
+  const [preferred, setPreferred] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,12 +27,14 @@ export default function Exclusions() {
   const load = async () => {
     setLoading(true);
     try {
-      const [agentRes, rows] = await Promise.all([
+      const [agentRes, excluded, wishes] = await Promise.all([
         base44.entities.Agent.filter({}, { sort: "name" }),
         base44.entities.Exclusion.list(),
+        base44.entities.PreferredPairing.list(),
       ]);
       setAgents(agentRes.items || []);
-      setExclusions(Array.isArray(rows) ? rows : rows?.items || []);
+      setExclusions(asArray(excluded));
+      setPreferred(asArray(wishes));
     } finally {
       setLoading(false);
     }
@@ -37,15 +44,25 @@ export default function Exclusions() {
     load();
   }, []);
 
-  const addExclusion = async (agent1Id, agent2Id) => {
-    const key = pairKey(agent1Id, agent2Id);
-    if (exclusions.some((e) => pairKey(e.agent1_id, e.agent2_id) === key)) return;
-    await base44.entities.Exclusion.create({ agent1_id: agent1Id, agent2_id: agent2Id });
+  const addExclusion = async (a, b) => {
+    if (hasPair(exclusions, a, b)) return;
+    await base44.entities.Exclusion.create({ agent1_id: a, agent2_id: b });
     load();
   };
 
   const removeExclusion = async (id) => {
     await base44.entities.Exclusion.delete(id);
+    load();
+  };
+
+  const addPreferred = async (a, b) => {
+    if (hasPair(preferred, a, b)) return;
+    await base44.entities.PreferredPairing.create({ agent1_id: a, agent2_id: b });
+    load();
+  };
+
+  const removePreferred = async (id) => {
+    await base44.entities.PreferredPairing.delete(id);
     load();
   };
 
@@ -58,32 +75,67 @@ export default function Exclusions() {
       <div className="rounded-xl border border-gray-200 bg-white p-10 text-center shadow-sm">
         <h1 className="font-heading text-lg font-semibold text-[#111111]">Admins only</h1>
         <p className="mt-2 text-sm text-gray-500">
-          This page is limited to admins. Ask an admin to make changes to the exclusion list.
+          This page is limited to admins. Ask an admin to make changes to these lists.
         </p>
       </div>
     );
   }
 
-  const existingKeys = new Set(exclusions.map((e) => pairKey(e.agent1_id, e.agent2_id)));
-
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111]">Exclusions</h1>
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111]">Admin</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Agents who should not work together. Auto-assign skips these pairs, and they cannot be picked
-          manually on the schedule.
+          Choose who should never ride together, and the ideal pairings to aim for.
         </p>
       </div>
 
-      <ExclusionForm agents={agents} existingKeys={existingKeys} onAdd={addExclusion} />
+      <section className="mb-9">
+        <h2 className="font-heading text-lg font-semibold text-[#111111]">Exclusions</h2>
+        <p className="mb-3 mt-1 text-sm text-gray-500">
+          Agents who should not work together. Auto-assign skips these pairs, and they cannot be picked
+          manually on the schedule.
+        </p>
+        <PairForm
+          agents={agents}
+          existingKeys={keysOf(exclusions)}
+          onAdd={addExclusion}
+          firstLabel="Agent"
+          secondLabel="Should not work with"
+        />
+        <PairList
+          rows={exclusions}
+          agents={agents}
+          loading={loading}
+          onRemove={removeExclusion}
+          firstLabel="Agent"
+          secondLabel="Should not work with"
+          emptyText="No exclusions yet."
+        />
+      </section>
 
-      <ExclusionList
-        exclusions={exclusions}
-        agents={agents}
-        loading={loading}
-        onRemove={removeExclusion}
-      />
+      <section>
+        <h2 className="font-heading text-lg font-semibold text-[#111111]">Preferred pairings</h2>
+        <p className="mb-3 mt-1 text-sm text-gray-500">
+          Ideal pairings. Auto-assign puts these two together whenever both are available.
+        </p>
+        <PairForm
+          agents={agents}
+          existingKeys={keysOf(preferred)}
+          onAdd={addPreferred}
+          firstLabel="Agent"
+          secondLabel="Ideal partner"
+        />
+        <PairList
+          rows={preferred}
+          agents={agents}
+          loading={loading}
+          onRemove={removePreferred}
+          firstLabel="Agent"
+          secondLabel="Ideal partner"
+          emptyText="No preferred pairings yet."
+        />
+      </section>
     </div>
   );
 }
