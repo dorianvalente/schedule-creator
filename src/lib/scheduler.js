@@ -72,58 +72,72 @@ export function pairingTypeFor(agent1, agent2) {
   return `${ROLE_LABELS[roles[0]]} + ${ROLE_LABELS[roles[1]]}`;
 }
 
-export function autoAssign(agents) {
+// Builds the week's pairings. `agentsPerManager` is how many agents a manager
+// rides with over the week: 1 = the same agent both days, 2 = the newest agent
+// on their team on Tuesday and the next newest on Thursday.
+export function autoAssign(agents, agentsPerManager = 1) {
+  const count = agentsPerManager === 2 ? 2 : 1;
   const withRole = agents.map((agent) => ({ agent, role: effectiveRole(agent) }));
   const managers = withRole.filter((x) => x.role === "manager");
   const others = withRole
     .filter((x) => x.role !== "manager")
     .sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]);
 
-  const pairings = [];
-  const used = new Set();
-
-  // 1a. Managers who have agents on their own team are matched first, so a
-  //     manager never loses their own agent to another pairing.
-  const pool = [...others];
   const taken = new Set();
-  const unpairedManagers = [];
+  const tuesday = [];
+  const thursday = [];
+
+  // 1a. Each manager takes their own team's newest agents first, so a manager
+  //     never loses their own agent to another pairing.
+  const picked = new Map();
   for (const m of managers) {
-    const idx = pool.findIndex((x) => !taken.has(x.agent.id) && onTeamOf(x.agent, m.agent));
-    if (idx === -1) {
-      unpairedManagers.push(m);
-      continue;
+    const mates = [];
+    const team = others
+      .filter((x) => !taken.has(x.agent.id) && onTeamOf(x.agent, m.agent))
+      .sort((a, b) => new Date(b.agent.created_date) - new Date(a.agent.created_date));
+    for (const c of team) {
+      if (mates.length >= count) break;
+      taken.add(c.agent.id);
+      mates.push(c.agent);
     }
-    const mate = pool[idx];
-    taken.add(mate.agent.id);
-    pairings.push({ agent1: m.agent, agent2: mate.agent });
-    used.add(m.agent.id).add(mate.agent.id);
+    picked.set(m.agent.id, mates);
   }
 
-  // 1b. The remaining managers take the least experienced agents still free.
-  for (const m of unpairedManagers) {
-    const idx = pool.findIndex((x) => !taken.has(x.agent.id));
-    if (idx === -1) break;
-    const mate = pool[idx];
-    taken.add(mate.agent.id);
-    pairings.push({ agent1: m.agent, agent2: mate.agent });
-    used.add(m.agent.id).add(mate.agent.id);
+  // 1b. Fill any open slots from the least experienced agents still free.
+  for (const m of managers) {
+    const mates = picked.get(m.agent.id);
+    for (const c of others) {
+      if (mates.length >= count) break;
+      if (taken.has(c.agent.id)) continue;
+      taken.add(c.agent.id);
+      mates.push(c.agent);
+    }
+    if (mates.length === 0) continue;
+    taken.add(m.agent.id);
+    tuesday.push({ agent1: m.agent, agent2: mates[0] });
+    thursday.push({ agent1: m.agent, agent2: mates[1] || mates[0] });
   }
 
   // 2. Remaining agents pair least-experienced with most-experienced
-  const remaining = pool.filter((x) => !taken.has(x.agent.id));
+  const remaining = others.filter((x) => !taken.has(x.agent.id));
   let lo = 0;
   let hi = remaining.length - 1;
   while (lo < hi) {
-    pairings.push({ agent1: remaining[lo].agent, agent2: remaining[hi].agent });
-    used.add(remaining[lo].agent.id).add(remaining[hi].agent.id);
+    const a1 = remaining[lo].agent;
+    const a2 = remaining[hi].agent;
+    tuesday.push({ agent1: a1, agent2: a2 });
+    thursday.push({ agent1: a1, agent2: a2 });
+    taken.add(a1.id).add(a2.id);
     lo++;
     hi--;
   }
 
   // 3. Any leftover agent goes solo
   for (const a of agents) {
-    if (!used.has(a.id)) pairings.push({ agent1: a, agent2: null });
+    if (taken.has(a.id)) continue;
+    tuesday.push({ agent1: a, agent2: null });
+    thursday.push({ agent1: a, agent2: null });
   }
 
-  return pairings;
+  return { Tuesday: tuesday, Thursday: thursday };
 }
