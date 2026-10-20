@@ -1,0 +1,36 @@
+{
+  "name": "Exclusion",
+  "type": "object",
+  "properties": {
+    "agent1_id": {
+      "type": "string",
+      "description": "First agent in the pair that must not be scheduled together"
+    },
+    "agent2_id": {
+      "type": "string",
+      "description": "Second agent in the pair that must not be scheduled together"
+    }
+  },
+  "required": [
+    "agent1_id",
+    "agent2_id"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

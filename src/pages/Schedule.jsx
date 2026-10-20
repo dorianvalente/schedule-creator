@@ -21,6 +21,7 @@ export default function Schedule() {
   const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [saving, setSaving] = useState(false);
   const [agentsPerManager, setAgentsPerManager] = useState(1);
+  const [exclusions, setExclusions] = useState([]);
 
   const weekKey = format(weekStart, "yyyy-MM-dd");
 
@@ -59,6 +60,9 @@ export default function Schedule() {
 
   useEffect(() => {
     loadAgents();
+    base44.entities.Exclusion.list().then((rows) =>
+      setExclusions(Array.isArray(rows) ? rows : rows?.items || [])
+    );
   }, []);
 
   useEffect(() => {
@@ -69,7 +73,7 @@ export default function Schedule() {
   const dateFor = (day) => addDays(weekStart, DAY_OFFSETS[day]);
 
   const runAutoAssign = () => {
-    const result = autoAssign(agents, agentsPerManager);
+    const result = autoAssign(agents, agentsPerManager, exclusions);
     const build = (list) =>
       list.map((p) => ({
         id: nextId(),
@@ -218,6 +222,7 @@ export default function Schedule() {
         onSetPartner={setPartner}
         onClear={clearDay}
         busy={busy}
+        exclusions={exclusions}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Upload, ClipboardList, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { TENURE_OPTIONS } from "@/lib/scheduler";
+import { TENURE_OPTIONS, formatName } from "@/lib/scheduler";
 
 function normalizeRole(value) {
   const v = String(value || "").toLowerCase();
@@ -25,7 +25,7 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
 
   const handleTextChange = (value) => {
     setText(value);
-    const names = value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const names = value.split(/\r?\n/).map((l) => formatName(l)).filter(Boolean);
     setRows((prev) =>
       names.map((name, i) => ({
         name,
@@ -44,7 +44,7 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
       .map((line) => {
         const [name, role] = line.split(",").map((c) => c.trim());
         if (!name) return null;
-        return { name, role: normalizeRole(role) || "auto" };
+        return { name: formatName(name), role: normalizeRole(role) || "auto" };
       })
       .filter(Boolean);
   };

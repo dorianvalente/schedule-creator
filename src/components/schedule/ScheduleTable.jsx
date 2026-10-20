@@ -1,4 +1,4 @@
-import { ROLE_LABELS, effectiveRole } from "@/lib/scheduler";
+import { ROLE_LABELS, effectiveRole, exclusionKeys, pairKey } from "@/lib/scheduler";
 
 const ROLE_CELL = {
   manager: "border-gray-300 bg-[#f1f1f1] text-[#111111]",
@@ -16,7 +16,18 @@ const ROLE_ROW = {
   tenured: "bg-emerald-50",
 };
 
-export default function ScheduleTable({ agents, days, partnerIdFor, agentById, onSetPartner, onClear, busy }) {
+export default function ScheduleTable({
+  agents,
+  days,
+  partnerIdFor,
+  agentById,
+  onSetPartner,
+  onClear,
+  busy,
+  exclusions = [],
+}) {
+  const blocked = exclusionKeys(exclusions);
+
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
@@ -79,6 +90,7 @@ export default function ScheduleTable({ agents, days, partnerIdFor, agentById, o
                         agents={agents}
                         selfId={a.id}
                         onChange={(v) => onSetPartner(d.key, a.id, v)}
+                        isBlocked={(otherId) => blocked.has(pairKey(a.id, otherId))}
                       />
                     </td>
                   );
@@ -92,7 +104,7 @@ export default function ScheduleTable({ agents, days, partnerIdFor, agentById, o
   );
 }
 
-function PartnerSelect({ value, partner, agents, selfId, onChange }) {
+function PartnerSelect({ value, partner, agents, selfId, onChange, isBlocked }) {
   const role = partner ? effectiveRole(partner) : null;
   return (
     <select
@@ -106,9 +118,10 @@ function PartnerSelect({ value, partner, agents, selfId, onChange }) {
       {agents
         .filter((a) => a.id !== selfId)
         .map((a) => (
-          <option key={a.id} value={a.id}>
+          <option key={a.id} value={a.id} disabled={isBlocked(a.id)}>
             {a.name} · {ROLE_LABELS[effectiveRole(a)]}
             {a.fa ? " · FA" : ""}
+            {isBlocked(a.id) ? " · excluded" : ""}
           </option>
         ))}
     </select>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { UserPlus, Trash2, Pencil, X, Check, Upload } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { ROLE_LABELS, ROLE_ORDER, TENURE_OPTIONS, effectiveRole } from "@/lib/scheduler";
+import { ROLE_LABELS, ROLE_ORDER, TENURE_OPTIONS, effectiveRole, formatName } from "@/lib/scheduler";
 import ImportAgentsDialog from "@/components/ImportAgentsDialog";
 
 const ROLE_STYLES = {
@@ -39,7 +39,7 @@ export default function Roster() {
     if (!draft.name.trim()) return;
     const isAuto = draft.role === "auto";
     await base44.entities.Agent.create({
-      name: draft.name.trim(),
+      name: formatName(draft.name),
       role: isAuto ? "one_month" : draft.role,
       manual_role: !isAuto,
       team: draft.team.trim(),
@@ -64,7 +64,7 @@ export default function Roster() {
     if (!editDraft.name.trim()) return;
     const isAuto = editDraft.role === "auto";
     await base44.entities.Agent.update(id, {
-      name: editDraft.name.trim(),
+      name: formatName(editDraft.name),
       role: isAuto ? "one_month" : editDraft.role,
       manual_role: !isAuto,
       team: editDraft.team.trim(),

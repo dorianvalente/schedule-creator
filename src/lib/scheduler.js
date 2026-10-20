@@ -60,6 +60,32 @@ export function effectiveRole(agent, now = new Date()) {
   return tenureFromDate(agent.created_date, now);
 }
 
+// Display form of a name: "BETH WILLIS" becomes "Beth Willis". Short all-caps
+// tokens like "AJ" are kept as initials.
+export function formatName(name) {
+  return String(name || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .map((w) => {
+      const letters = w.replace(/[^A-Za-z]/g, "");
+      if (letters && letters.length <= 3 && letters === letters.toUpperCase()) return w;
+      const i = w.search(/[A-Za-z]/);
+      if (i === -1) return w;
+      return w.slice(0, i) + w[i].toUpperCase() + w.slice(i + 1).toLowerCase();
+    })
+    .join(" ");
+}
+
+// A stable key for an unordered pair of agents, so A+B and B+A match.
+export function pairKey(a, b) {
+  return [a, b].sort().join("|");
+}
+
+export function exclusionKeys(exclusions = []) {
+  return new Set((exclusions || []).map((e) => pairKey(e.agent1_id, e.agent2_id)));
+}
+
 // An agent is on a manager's team when their Team field names that manager.
 export function onTeamOf(agent, manager) {
   const team = String(agent?.team || "").trim().toLowerCase();
@@ -75,8 +101,10 @@ export function pairingTypeFor(agent1, agent2) {
 // Builds the week's pairings. `agentsPerManager` is how many agents a manager
 // rides with over the week: 1 = the same agent both days, 2 = the newest agent
 // on their team on Tuesday and the next newest on Thursday.
-export function autoAssign(agents, agentsPerManager = 1) {
+export function autoAssign(agents, agentsPerManager = 1, exclusions = []) {
   const count = agentsPerManager === 2 ? 2 : 1;
+  const blocked = exclusionKeys(exclusions);
+  const isBlocked = (aId, bId) => blocked.has(pairKey(aId, bId));
   const withRole = agents.map((agent) => ({ agent, role: effectiveRole(agent) }));
   const managers = withRole.filter((x) => x.role === "manager");
   const others = withRole
@@ -93,7 +121,7 @@ export function autoAssign(agents, agentsPerManager = 1) {
   for (const m of managers) {
     const mates = [];
     const team = others
-      .filter((x) => !taken.has(x.agent.id) && onTeamOf(x.agent, m.agent))
+      .filter((x) => !taken.has(x.agent.id) && onTeamOf(x.agent, m.agent) && !isBlocked(x.agent.id, m.agent.id))
       .sort((a, b) => new Date(b.agent.created_date) - new Date(a.agent.created_date));
     for (const c of team) {
       if (mates.length >= count) break;
@@ -109,6 +137,7 @@ export function autoAssign(agents, agentsPerManager = 1) {
     for (const c of others) {
       if (mates.length >= count) break;
       if (taken.has(c.agent.id)) continue;
+      if (isBlocked(c.agent.id, m.agent.id)) continue;
       taken.add(c.agent.id);
       mates.push(c.agent);
     }
@@ -118,18 +147,28 @@ export function autoAssign(agents, agentsPerManager = 1) {
     thursday.push({ agent1: m.agent, agent2: mates[1] || mates[0] });
   }
 
-  // 2. Remaining agents pair least-experienced with most-experienced
-  const remaining = others.filter((x) => !taken.has(x.agent.id));
-  let lo = 0;
-  let hi = remaining.length - 1;
-  while (lo < hi) {
-    const a1 = remaining[lo].agent;
-    const a2 = remaining[hi].agent;
-    tuesday.push({ agent1: a1, agent2: a2 });
-    thursday.push({ agent1: a1, agent2: a2 });
-    taken.add(a1.id).add(a2.id);
-    lo++;
-    hi--;
+  // 2. Remaining agents pair least-experienced with most-experienced. An
+  //    excluded pair is skipped and the least experienced agent looks further
+  //    down the list for a partner instead.
+  const pool = others.filter((x) => !taken.has(x.agent.id));
+  while (pool.length > 1) {
+    const first = pool.shift();
+    let pick = -1;
+    for (let i = pool.length - 1; i >= 0; i--) {
+      if (!isBlocked(first.agent.id, pool[i].agent.id)) {
+        pick = i;
+        break;
+      }
+    }
+    if (pick === -1) {
+      tuesday.push({ agent1: first.agent, agent2: null });
+      thursday.push({ agent1: first.agent, agent2: null });
+      continue;
+    }
+    const second = pool.splice(pick, 1)[0];
+    tuesday.push({ agent1: first.agent, agent2: second.agent });
+    thursday.push({ agent1: first.agent, agent2: second.agent });
+    taken.add(first.agent.id).add(second.agent.id);
   }
 
   // 3. Any leftover agent goes solo

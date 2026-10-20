@@ -10,6 +10,11 @@ import ScrollToTop from './components/ScrollToTop';
 import Layout from '@/components/Layout';
 import Schedule from '@/pages/Schedule';
 import Roster from '@/pages/Roster';
+import Exclusions from '@/pages/Exclusions';
+import Login from '@/pages/Login';
+import Register from '@/pages/Register';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -41,7 +46,12 @@ const AuthenticatedApp = () => {
     <Route element={<Layout />}>
       <Route path="/" element={<Schedule />} />
       <Route path="/roster" element={<Roster />} />
+      <Route path="/exclusions" element={<Exclusions />} />
     </Route>
+    <Route path="/login" element={<Login />} />
+    <Route path="/register" element={<Register />} />
+    <Route path="/forgot-password" element={<ForgotPassword />} />
+    <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -1,12 +1,27 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { CalendarDays, Users } from "lucide-react";
+import { CalendarDays, Users, Ban } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 
 const navItems = [
   { to: "/", label: "Schedule", icon: CalendarDays, end: true },
   { to: "/roster", label: "Roster", icon: Users, end: false },
 ];
 
+const ADMIN_ITEM = { to: "/exclusions", label: "Exclusions", icon: Ban, end: false };
+
 export default function Layout() {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    base44.auth
+      .me()
+      .then((u) => setIsAdmin(u?.role === "admin"))
+      .catch(() => setIsAdmin(false));
+  }, []);
+
+  const items = isAdmin ? [...navItems, ADMIN_ITEM] : navItems;
+
   return (
     <div className="min-h-screen bg-[#f6f7f9]">
       <header className="sticky top-0 z-30 bg-[#111111] text-white">
@@ -18,7 +33,7 @@ export default function Layout() {
             <span className="text-[15px] font-semibold tracking-tight">TeamPair Scheduler</span>
           </div>
           <nav className="flex items-center gap-1">
-            {navItems.map(({ to, label, icon: Icon, end }) => (
+            {items.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
