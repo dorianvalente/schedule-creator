@@ -27,6 +27,10 @@
       "type": "string",
       "description": "Name of the manager whose team this agent is on. Auto-assign pairs each manager with their own agents first"
     },
+    "location": {
+      "type": "string",
+      "description": "Ride location this agent belongs to. Schedules are built one location at a time"
+    },
     "fa": {
       "type": "boolean",
       "description": "Whether this agent is marked FA",

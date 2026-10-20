@@ -4,6 +4,7 @@ import { Sparkles, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { autoAssign, ROLE_ORDER, effectiveRole } from "@/lib/scheduler";
 import ScheduleTable from "@/components/schedule/ScheduleTable";
+import LocationPicker from "@/components/schedule/LocationPicker";
 
 const DAY_OFFSETS = { Tuesday: 1, Thursday: 3 };
 const DAYS = ["Tuesday", "Thursday"];
@@ -23,6 +24,8 @@ export default function Schedule() {
   const [agentsPerManager, setAgentsPerManager] = useState(1);
   const [exclusions, setExclusions] = useState([]);
   const [preferred, setPreferred] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [location, setLocation] = useState("");
 
   const weekKey = format(weekStart, "yyyy-MM-dd");
 
@@ -36,10 +39,27 @@ export default function Schedule() {
     }
   };
 
+  const agentsAtLocation = agents.filter((a) => (a.location || "") === location);
+  const locationAgentIds = agentsAtLocation.map((a) => a.id);
+
   const loadSchedule = async () => {
+    if (!location) {
+      setSchedule({ Tuesday: [], Thursday: [] });
+      setDirty(false);
+      return;
+    }
     setLoadingSchedule(true);
     try {
-      const res = await base44.entities.Pairing.filter({ week_start: weekKey }, { sort: "sort_order" });
+      const res = await base44.entities.Pairing.filter(
+        {
+          week_start: weekKey,
+          $or: [
+            { agent1_id: { $in: locationAgentIds } },
+            { agent2_id: { $in: locationAgentIds } },
+          ],
+        },
+        { sort: "sort_order" }
+      );
       const items = res.items || [];
       const byDay = { Tuesday: [], Thursday: [] };
       items.forEach((p) => {
@@ -61,6 +81,11 @@ export default function Schedule() {
 
   useEffect(() => {
     loadAgents();
+    base44.entities.Location.filter({}, { sort: "name" }).then((res) => {
+      const items = res.items || [];
+      setLocations(items);
+      setLocation((cur) => cur || items[0]?.name || "");
+    });
     base44.entities.Exclusion.list().then((rows) =>
       setExclusions(Array.isArray(rows) ? rows : rows?.items || [])
     );
@@ -70,14 +95,15 @@ export default function Schedule() {
   }, []);
 
   useEffect(() => {
+    if (loadingAgents) return;
     loadSchedule();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekKey]);
+  }, [weekKey, location, agents]);
 
   const dateFor = (day) => addDays(weekStart, DAY_OFFSETS[day]);
 
   const runAutoAssign = () => {
-    const result = autoAssign(agents, agentsPerManager, exclusions, preferred);
+    const result = autoAssign(agentsAtLocation, agentsPerManager, exclusions, preferred);
     const build = (list) =>
       list.map((p) => ({
         id: nextId(),
@@ -110,7 +136,7 @@ export default function Schedule() {
     setDirty(true);
   };
 
-  const agentById = (id) => agents.find((a) => a.id === id) || null;
+  const agentById = (id) => agentsAtLocation.find((a) => a.id === id) || null;
 
   const partnerIdFor = (day, agentId) => {
     const p = schedule[day].find((x) => x.agent1Id === agentId || x.agent2Id === agentId);
@@ -118,7 +144,7 @@ export default function Schedule() {
     return p.agent1Id === agentId ? p.agent2Id : p.agent1Id;
   };
 
-  const sortedAgents = [...agents].sort((a, b) => {
+  const sortedAgents = [...agentsAtLocation].sort((a, b) => {
     const rank = ROLE_ORDER[effectiveRole(a)] - ROLE_ORDER[effectiveRole(b)];
     return rank !== 0 ? rank : a.name.localeCompare(b.name);
   });
@@ -128,11 +154,14 @@ export default function Schedule() {
   const save = async () => {
     setSaving(true);
     try {
-      // Replace all pairings for this week
+      // Replace this location's pairings for the week, leaving other locations alone
+      const ids = locationAgentIds;
       const existing = await base44.entities.Pairing.filter({ week_start: weekKey });
-      const existingItems = existing.items || [];
-      if (existingItems.length > 0) {
-        await base44.entities.Pairing.deleteMany({ week_start: weekKey });
+      const mine = (existing.items || []).filter(
+        (p) => ids.includes(p.agent1_id) || ids.includes(p.agent2_id)
+      );
+      if (mine.length > 0) {
+        await base44.entities.Pairing.deleteMany({ id: { $in: mine.map((p) => p.id) } });
       }
       const records = [];
       DAYS.forEach((day) => {
@@ -164,7 +193,8 @@ export default function Schedule() {
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111]">Riding Schedule</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Week of {format(weekStart, "MMM d")} · {agents.length} active agents
+            Week of {format(weekStart, "MMM d")} · {location || "No location selected"} ·{" "}
+            {agentsAtLocation.length} active agents
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -201,7 +231,7 @@ export default function Schedule() {
           </div>
           <button
             onClick={runAutoAssign}
-            disabled={busy || agents.length === 0}
+            disabled={busy || !location || agentsAtLocation.length === 0}
             className="inline-flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" />
@@ -217,6 +247,13 @@ export default function Schedule() {
           </button>
         </div>
       </div>
+
+      <LocationPicker
+        locations={locations}
+        value={location}
+        onChange={setLocation}
+        agentCount={agentsAtLocation.length}
+      />
 
       <ScheduleTable
         agents={sortedAgents}

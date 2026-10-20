@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { UserPlus, Trash2, Pencil, X, Check, Upload } from "lucide-react";
+import { UserPlus, Trash2, Pencil, X, Check, Upload, MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS, ROLE_ORDER, TENURE_OPTIONS, effectiveRole, formatName } from "@/lib/scheduler";
 import ImportAgentsDialog from "@/components/ImportAgentsDialog";
+import LocationManager from "@/components/LocationManager";
 
 const ROLE_STYLES = {
   manager: "bg-[#111111] text-white",
@@ -18,7 +19,9 @@ export default function Roster() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [draft, setDraft] = useState({ name: "", role: "auto", team: "", fa: false });
+  const [showLocations, setShowLocations] = useState(false);
+  const [locations, setLocations] = useState([]);
+  const [draft, setDraft] = useState({ name: "", role: "auto", team: "", location: "", fa: false });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: "", role: "auto", team: "" });
 
@@ -32,8 +35,14 @@ export default function Roster() {
     }
   };
 
+  const loadLocations = async () => {
+    const res = await base44.entities.Location.filter({}, { sort: "name" });
+    setLocations(res.items || []);
+  };
+
   useEffect(() => {
     loadAgents();
+    loadLocations();
   }, []);
 
   const addAgent = async () => {
@@ -44,10 +53,11 @@ export default function Roster() {
       role: isAuto ? "one_month" : draft.role,
       manual_role: !isAuto,
       team: draft.team.trim(),
+      location: draft.location,
       fa: !!draft.fa,
       active: true,
     });
-    setDraft({ name: "", role: "auto", team: "", fa: false });
+    setDraft({ name: "", role: "auto", team: "", location: "", fa: false });
     setShowForm(false);
     loadAgents();
   };
@@ -81,6 +91,11 @@ export default function Roster() {
 
   const toggleFa = async (agent) => {
     await base44.entities.Agent.update(agent.id, { fa: !agent.fa });
+    loadAgents();
+  };
+
+  const setAgentLocation = async (agent, location) => {
+    await base44.entities.Agent.update(agent.id, { location });
     loadAgents();
   };
 
@@ -120,6 +135,13 @@ export default function Roster() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowLocations(true)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#111111] transition-colors hover:bg-gray-50"
+          >
+            <MapPin className="h-4 w-4" />
+            Locations
+          </button>
           <button
             onClick={() => setShowImport(true)}
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#111111] transition-colors hover:bg-gray-50"
@@ -180,6 +202,21 @@ export default function Roster() {
                 ))}
               </select>
             </div>
+            <div className="sm:w-44">
+              <label className="mb-1 block text-xs font-medium text-gray-500">Location</label>
+              <select
+                value={draft.location}
+                onChange={(e) => setDraft({ ...draft, location: e.target.value })}
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
+              >
+                <option value="">No location</option>
+                {locations.map((l) => (
+                  <option key={l.id} value={l.name}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <label className="flex cursor-pointer items-center gap-2 pb-2.5">
               <input
                 type="checkbox"
@@ -214,6 +251,7 @@ export default function Roster() {
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Tenure</th>
               <th className="px-4 py-3 font-medium">Team</th>
+              <th className="px-4 py-3 font-medium">Location</th>
               <th className="px-4 py-3 font-medium">FA</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 text-right font-medium">Actions</th>
@@ -222,7 +260,7 @@ export default function Roster() {
           <tbody className="divide-y divide-gray-100">
             {loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
               </tr>
             )}
             {!loading && sorted.map((agent) => (
@@ -282,6 +320,23 @@ export default function Roster() {
                   )}
                 </td>
                 <td className="px-4 py-3">
+                  <select
+                    value={agent.location || ""}
+                    onChange={(e) => setAgentLocation(agent, e.target.value)}
+                    className="w-full max-w-[160px] rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 outline-none focus:border-[#111111]"
+                  >
+                    <option value="">—</option>
+                    {locations.map((l) => (
+                      <option key={l.id} value={l.name}>
+                        {l.name}
+                      </option>
+                    ))}
+                    {agent.location && !locations.some((l) => l.name === agent.location) && (
+                      <option value={agent.location}>{agent.location}</option>
+                    )}
+                  </select>
+                </td>
+                <td className="px-4 py-3">
                   <input
                     type="checkbox"
                     checked={!!agent.fa}
@@ -325,7 +380,7 @@ export default function Roster() {
             ))}
             {!loading && sorted.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
                   No agents yet. Add your first agent to start building schedules.
                 </td>
               </tr>
@@ -336,6 +391,14 @@ export default function Roster() {
 
       {showImport && (
         <ImportAgentsDialog onClose={() => setShowImport(false)} onImported={loadAgents} />
+      )}
+
+      {showLocations && (
+        <LocationManager
+          locations={locations}
+          onClose={() => setShowLocations(false)}
+          onChanged={loadLocations}
+        />
       )}
     </div>
   );

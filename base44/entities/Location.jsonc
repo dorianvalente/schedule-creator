@@ -1,0 +1,13 @@
+{
+  "name": "Location",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of a ride location"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
