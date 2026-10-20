@@ -2,36 +2,55 @@ import { useRef, useState } from "react";
 import { Upload, ClipboardList, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-function normalizeRole(value, fallback) {
+const ROLE_OPTIONS = [
+  { value: "one_month", label: "1 Month Agent" },
+  { value: "sna", label: "SNA" },
+  { value: "rpa", label: "RPA" },
+  { value: "tenured", label: "Tenured Agent" },
+  { value: "manager", label: "Manager" },
+];
+
+function normalizeRole(value) {
   const v = String(value || "").toLowerCase();
   if (v.includes("manag")) return "manager";
   if (v.includes("ten")) return "tenured";
   if (v.includes("sna")) return "sna";
   if (v.includes("rpa")) return "rpa";
   if (v.includes("month")) return "one_month";
-  return fallback;
+  return "one_month";
 }
 
 export default function ImportAgentsDialog({ onClose, onImported }) {
   const [tab, setTab] = useState("paste");
   const [text, setText] = useState("");
-  const [defaultRole, setDefaultRole] = useState("one_month");
+  const [rows, setRows] = useState([]);
   const [csvAgents, setCsvAgents] = useState([]);
   const [csvFileName, setCsvFileName] = useState("");
   const [importing, setImporting] = useState(false);
   const fileRef = useRef(null);
 
+  const handleTextChange = (value) => {
+    setText(value);
+    const names = value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    setRows((prev) =>
+      names.map((name, i) => ({
+        name,
+        role: prev[i]?.name === name ? prev[i].role : "one_month",
+      }))
+    );
+  };
+
   const parseCsv = (raw) => {
-    const rows = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-    if (!rows.length) return [];
-    const header = rows[0].split(",").map((c) => c.trim().toLowerCase());
+    const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return [];
+    const header = lines[0].split(",").map((c) => c.trim().toLowerCase());
     const start = header.includes("name") ? 1 : 0;
-    return rows
+    return lines
       .slice(start)
       .map((line) => {
         const [name, role] = line.split(",").map((c) => c.trim());
         if (!name) return null;
-        return { name, role: normalizeRole(role, defaultRole) };
+        return { name, role: normalizeRole(role) };
       })
       .filter(Boolean);
   };
@@ -45,13 +64,13 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
     reader.readAsText(file);
   };
 
-  const pastedAgents = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((name) => ({ name, role: defaultRole }));
+  const pending = tab === "paste" ? rows : csvAgents;
 
-  const pending = tab === "paste" ? pastedAgents : csvAgents;
+  const setRowRole = (index, role) => {
+    const update = (prev) => prev.map((r, i) => (i === index ? { ...r, role } : r));
+    if (tab === "paste") setRows(update);
+    else setCsvAgents(update);
+  };
 
   const runImport = async () => {
     if (!pending.length) return;
@@ -93,71 +112,61 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
 
         <div className="space-y-4 p-5">
           {tab === "paste" ? (
-            <>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">Names (one per line)</label>
-                <textarea
-                  autoFocus
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  rows={6}
-                  placeholder={"Jane Doe\nJohn Smith\nAlex Lee"}
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#111111]"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">Tenure for all imported agents</label>
-                <select
-                  value={defaultRole}
-                  onChange={(e) => setDefaultRole(e.target.value)}
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
-                >
-                  <option value="one_month">1 Month Agent</option>
-                  <option value="sna">SNA</option>
-                  <option value="rpa">RPA</option>
-                  <option value="tenured">Tenured Agent</option>
-                  <option value="manager">Manager</option>
-                </select>
-              </div>
-            </>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-500">Names (one per line)</label>
+              <textarea
+                autoFocus
+                value={text}
+                onChange={(e) => handleTextChange(e.target.value)}
+                rows={6}
+                placeholder={"Jane Doe\nJohn Smith\nAlex Lee"}
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#111111]"
+              />
+            </div>
           ) : (
-            <>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">CSV file</label>
-                <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={handleFile} className="hidden" />
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-gray-300 py-6 text-sm text-gray-500 transition-colors hover:border-[#111111] hover:text-[#111111]"
-                >
-                  <Upload className="h-5 w-5" />
-                  {csvFileName || "Choose a CSV file"}
-                </button>
-                <p className="mt-2 text-xs text-gray-400">
-                  Columns: name, role. Role is optional and defaults to the one picked below.
-                </p>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">Default tenure</label>
-                <select
-                  value={defaultRole}
-                  onChange={(e) => setDefaultRole(e.target.value)}
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
-                >
-                  <option value="one_month">1 Month Agent</option>
-                  <option value="sna">SNA</option>
-                  <option value="rpa">RPA</option>
-                  <option value="tenured">Tenured Agent</option>
-                  <option value="manager">Manager</option>
-                </select>
-              </div>
-            </>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-500">CSV file</label>
+              <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={handleFile} className="hidden" />
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-gray-300 py-6 text-sm text-gray-500 transition-colors hover:border-[#111111] hover:text-[#111111]"
+              >
+                <Upload className="h-5 w-5" />
+                {csvFileName || "Choose a CSV file"}
+              </button>
+              <p className="mt-2 text-xs text-gray-400">
+                Columns: name, role. Role is optional — set each agent's tenure below.
+              </p>
+            </div>
           )}
 
-          <div className="rounded-lg bg-[#f6f7f9] px-3 py-2.5 text-sm text-gray-600">
-            {pending.length > 0
-              ? `${pending.length} agent${pending.length === 1 ? "" : "s"} ready to import`
-              : "Nothing to import yet"}
-          </div>
+          {pending.length > 0 ? (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-500">
+                {pending.length} agent{pending.length === 1 ? "" : "s"} to import
+              </label>
+              <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-gray-100 p-2">
+                {pending.map((a, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="flex-1 truncate text-sm text-[#111111]">{a.name}</span>
+                    <select
+                      value={a.role}
+                      onChange={(e) => setRowRole(i, e.target.value)}
+                      className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm outline-none focus:border-[#111111]"
+                    >
+                      {ROLE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg bg-[#f6f7f9] px-3 py-2.5 text-sm text-gray-600">Nothing to import yet</div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
