@@ -6,11 +6,13 @@ import ImportAgentsDialog from "@/components/ImportAgentsDialog";
 
 const ROLE_STYLES = {
   manager: "bg-[#111111] text-white",
-  new: "bg-amber-100 text-amber-800 border border-amber-200",
+  one_month: "bg-amber-100 text-amber-800 border border-amber-200",
+  sna: "bg-sky-100 text-sky-800 border border-sky-200",
+  rpa: "bg-violet-100 text-violet-800 border border-violet-200",
   tenured: "bg-emerald-100 text-emerald-800 border border-emerald-200",
 };
 
-const ROLE_ORDER = { manager: 0, new: 1, tenured: 2 };
+const ROLE_ORDER = { manager: 0, one_month: 1, sna: 2, rpa: 3, tenured: 4 };
 
 export default function Roster() {
   const [agents, setAgents] = useState([]);
@@ -72,7 +74,9 @@ export default function Roster() {
 
   const counts = {
     manager: agents.filter((a) => a.role === "manager").length,
-    new: agents.filter((a) => a.role === "new").length,
+    one_month: agents.filter((a) => a.role === "one_month").length,
+    sna: agents.filter((a) => a.role === "sna").length,
+    rpa: agents.filter((a) => a.role === "rpa").length,
     tenured: agents.filter((a) => a.role === "tenured").length,
   };
 
@@ -82,7 +86,7 @@ export default function Roster() {
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111]">Roster</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {counts.manager} managers · {counts.new} new · {counts.tenured} tenured
+            {counts.manager} managers · {counts.one_month} 1 Month · {counts.sna} SNA · {counts.rpa} RPA · {counts.tenured} tenured
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -124,7 +128,9 @@ export default function Roster() {
                 onChange={(e) => setDraft({ ...draft, role: e.target.value })}
                 className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
               >
-                <option value="new">New Agent</option>
+                <option value="one_month">1 Month Agent</option>
+                <option value="sna">SNA</option>
+                <option value="rpa">RPA</option>
                 <option value="tenured">Tenured Agent</option>
                 <option value="manager">Manager</option>
               </select>
@@ -184,7 +190,9 @@ export default function Roster() {
                       onChange={(e) => setEditDraft({ ...editDraft, role: e.target.value })}
                       className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm outline-none focus:border-[#111111]"
                     >
-                      <option value="new">New Agent</option>
+                      <option value="one_month">1 Month Agent</option>
+                      <option value="sna">SNA</option>
+                      <option value="rpa">RPA</option>
                       <option value="tenured">Tenured Agent</option>
                       <option value="manager">Manager</option>
                     </select>

@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { addDays, addWeeks, format, startOfWeek } from "date-fns";
 import { Sparkles, Save, ChevronLeft, ChevronRight, Plus, X, UserCircle2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { autoAssign, ROLE_LABELS, PAIRING_TYPE_LABELS, pairingTypeFor } from "@/lib/scheduler";
+import { autoAssign, ROLE_LABELS, pairingTypeFor } from "@/lib/scheduler";
 
 const ROLE_DOT = {
   manager: "bg-[#111111]",
-  new: "bg-amber-400",
+  one_month: "bg-amber-400",
+  sna: "bg-sky-400",
+  rpa: "bg-violet-400",
   tenured: "bg-emerald-400",
 };
 
@@ -245,12 +247,12 @@ function DayColumn({ day, date, pairings, agents, usedIds, agentById, busy, onUp
         {pairings.map((p) => {
           const a1 = agentById(p.agent1Id);
           const a2 = agentById(p.agent2Id);
-          const type = a1 ? pairingTypeFor(a1, a2) : "solo";
+          const type = a1 ? pairingTypeFor(a1, a2) : "Solo";
           return (
             <div key={p.id} className="rounded-lg border border-gray-100 bg-[#f6f7f9] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-gray-500 ring-1 ring-gray-200">
-                  {PAIRING_TYPE_LABELS[type]}
+                  {type}
                 </span>
                 <button onClick={() => onRemove(p.id)} className="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500">
                   <X className="h-3.5 w-3.5" />

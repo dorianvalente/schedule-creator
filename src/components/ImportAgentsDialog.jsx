@@ -6,14 +6,16 @@ function normalizeRole(value, fallback) {
   const v = String(value || "").toLowerCase();
   if (v.includes("manag")) return "manager";
   if (v.includes("ten")) return "tenured";
-  if (v.includes("new")) return "new";
+  if (v.includes("sna")) return "sna";
+  if (v.includes("rpa")) return "rpa";
+  if (v.includes("month")) return "one_month";
   return fallback;
 }
 
 export default function ImportAgentsDialog({ onClose, onImported }) {
   const [tab, setTab] = useState("paste");
   const [text, setText] = useState("");
-  const [defaultRole, setDefaultRole] = useState("new");
+  const [defaultRole, setDefaultRole] = useState("one_month");
   const [csvAgents, setCsvAgents] = useState([]);
   const [csvFileName, setCsvFileName] = useState("");
   const [importing, setImporting] = useState(false);
@@ -110,7 +112,9 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
                   onChange={(e) => setDefaultRole(e.target.value)}
                   className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
                 >
-                  <option value="new">New Agent</option>
+                  <option value="one_month">1 Month Agent</option>
+                  <option value="sna">SNA</option>
+                  <option value="rpa">RPA</option>
                   <option value="tenured">Tenured Agent</option>
                   <option value="manager">Manager</option>
                 </select>
@@ -139,7 +143,9 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
                   onChange={(e) => setDefaultRole(e.target.value)}
                   className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
                 >
-                  <option value="new">New Agent</option>
+                  <option value="one_month">1 Month Agent</option>
+                  <option value="sna">SNA</option>
+                  <option value="rpa">RPA</option>
                   <option value="tenured">Tenured Agent</option>
                   <option value="manager">Manager</option>
                 </select>

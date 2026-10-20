@@ -11,7 +11,9 @@
       "description": "Tenure / role tier used for pairing",
       "enum": [
         "manager",
-        "new",
+        "one_month",
+        "sna",
+        "rpa",
         "tenured"
       ]
     },
