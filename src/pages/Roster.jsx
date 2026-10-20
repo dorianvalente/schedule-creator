@@ -17,7 +17,7 @@ export default function Roster() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [draft, setDraft] = useState({ name: "", role: "auto", team: "" });
+  const [draft, setDraft] = useState({ name: "", role: "auto", team: "", fa: false });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: "", role: "auto", team: "" });
 
@@ -43,9 +43,10 @@ export default function Roster() {
       role: isAuto ? "one_month" : draft.role,
       manual_role: !isAuto,
       team: draft.team.trim(),
+      fa: !!draft.fa,
       active: true,
     });
-    setDraft({ name: "", role: "auto", team: "" });
+    setDraft({ name: "", role: "auto", team: "", fa: false });
     setShowForm(false);
     loadAgents();
   };
@@ -74,6 +75,11 @@ export default function Roster() {
 
   const toggleActive = async (agent) => {
     await base44.entities.Agent.update(agent.id, { active: !agent.active });
+    loadAgents();
+  };
+
+  const toggleFa = async (agent) => {
+    await base44.entities.Agent.update(agent.id, { fa: !agent.fa });
     loadAgents();
   };
 
@@ -172,6 +178,15 @@ export default function Roster() {
                 ))}
               </select>
             </div>
+            <label className="flex cursor-pointer items-center gap-2 pb-2.5">
+              <input
+                type="checkbox"
+                checked={draft.fa}
+                onChange={(e) => setDraft({ ...draft, fa: e.target.checked })}
+                className="h-4 w-4 cursor-pointer accent-[#111111]"
+              />
+              <span className="text-sm font-medium text-gray-600">FA</span>
+            </label>
             <div className="flex gap-2">
               <button
                 onClick={addAgent}
@@ -197,6 +212,7 @@ export default function Roster() {
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Tenure</th>
               <th className="px-4 py-3 font-medium">Team</th>
+              <th className="px-4 py-3 font-medium">FA</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 text-right font-medium">Actions</th>
             </tr>
@@ -204,7 +220,7 @@ export default function Roster() {
           <tbody className="divide-y divide-gray-100">
             {loading && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
+                <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
               </tr>
             )}
             {!loading && sorted.map((agent) => (
@@ -264,6 +280,15 @@ export default function Roster() {
                   )}
                 </td>
                 <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={!!agent.fa}
+                    onChange={() => toggleFa(agent)}
+                    className="h-4 w-4 cursor-pointer accent-[#111111]"
+                    aria-label="FA"
+                  />
+                </td>
+                <td className="px-4 py-3">
                   <button
                     onClick={() => toggleActive(agent)}
                     className={`relative h-5 w-9 rounded-full transition-colors ${agent.active ? "bg-emerald-500" : "bg-gray-300"}`}
@@ -298,7 +323,7 @@ export default function Roster() {
             ))}
             {!loading && sorted.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">
+                <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">
                   No agents yet. Add your first agent to start building schedules.
                 </td>
               </tr>

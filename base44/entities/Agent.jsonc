@@ -26,6 +26,11 @@
       "type": "string",
       "description": "Name of the manager whose team this agent is on. Auto-assign pairs each manager with their own agents first"
     },
+    "fa": {
+      "type": "boolean",
+      "description": "Whether this agent is marked FA",
+      "default": false
+    },
     "active": {
       "type": "boolean",
       "description": "Whether the agent is included in auto-assign",

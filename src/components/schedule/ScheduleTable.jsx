@@ -108,6 +108,7 @@ function PartnerSelect({ value, partner, agents, selfId, onChange }) {
         .map((a) => (
           <option key={a.id} value={a.id}>
             {a.name} · {ROLE_LABELS[effectiveRole(a)]}
+            {a.fa ? " · FA" : ""}
           </option>
         ))}
     </select>
