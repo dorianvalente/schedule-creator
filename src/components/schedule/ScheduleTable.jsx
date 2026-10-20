@@ -1,13 +1,5 @@
 import { ROLE_LABELS, effectiveRole } from "@/lib/scheduler";
 
-const ROLE_CHIP = {
-  manager: "bg-[#111111] text-white ring-[#111111]",
-  one_month: "bg-amber-100 text-amber-900 ring-amber-200",
-  sna: "bg-sky-100 text-sky-900 ring-sky-200",
-  rpa: "bg-violet-100 text-violet-900 ring-violet-200",
-  tenured: "bg-emerald-100 text-emerald-900 ring-emerald-200",
-};
-
 const ROLE_CELL = {
   manager: "border-gray-300 bg-[#f1f1f1] text-[#111111]",
   one_month: "border-amber-200 bg-amber-50 text-amber-900",
@@ -62,17 +54,8 @@ export default function ScheduleTable({ agents, days, partnerIdFor, agentById, o
 
             {agents.map((a) => (
               <tr key={a.id} className="border-b border-gray-100 last:border-0 hover:bg-[#fafafa]">
-                <td className="whitespace-nowrap px-4 py-2.5">
-                  <div className="flex flex-col items-start gap-1">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${
-                        ROLE_CHIP[effectiveRole(a)]
-                      }`}
-                    >
-                      {a.name}
-                    </span>
-                    <span className="text-[11px] text-gray-400">{ROLE_LABELS[effectiveRole(a)]}</span>
-                  </div>
+                <td className="whitespace-nowrap px-4 py-2.5 text-sm font-medium text-[#111111]">
+                  {a.name}
                 </td>
                 {days.map((d) => {
                   const partnerId = partnerIdFor(d.key, a.id);
