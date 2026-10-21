@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { pairKey } from "@/lib/scheduler";
+import { DAY_OPTIONS, pairKey } from "@/lib/scheduler";
 import PairForm from "@/components/admin/PairForm";
 import PairList from "@/components/admin/PairList";
 
@@ -55,9 +55,9 @@ export default function Exclusions() {
     load();
   };
 
-  const addPreferred = async (a, b) => {
+  const addPreferred = async (a, b, day) => {
     if (hasPair(preferred, a, b)) return;
-    await base44.entities.PreferredPairing.create({ agent1_id: a, agent2_id: b });
+    await base44.entities.PreferredPairing.create({ agent1_id: a, agent2_id: b, day: day || "Any" });
     load();
   };
 
@@ -117,7 +117,8 @@ export default function Exclusions() {
       <section>
         <h2 className="font-heading text-lg font-semibold text-[#111111]">Preferred pairings</h2>
         <p className="mb-3 mt-1 text-sm text-gray-500">
-          Ideal pairings. Auto-assign puts these two together whenever both are available.
+          Ideal pairings. Auto-assign puts these two together on their preferred day. Choose “Any
+          day” to leave the day open.
         </p>
         <PairForm
           agents={agents}
@@ -125,6 +126,7 @@ export default function Exclusions() {
           onAdd={addPreferred}
           firstLabel="Agent"
           secondLabel="Ideal partner"
+          dayOptions={DAY_OPTIONS}
         />
         <PairList
           rows={preferred}
@@ -133,6 +135,7 @@ export default function Exclusions() {
           onRemove={removePreferred}
           firstLabel="Agent"
           secondLabel="Ideal partner"
+          dayLabel="Preferred day"
           emptyText="No preferred pairings yet."
         />
       </section>

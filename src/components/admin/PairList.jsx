@@ -1,7 +1,17 @@
 import { Trash2 } from "lucide-react";
 
-export default function PairList({ rows, agents, loading, onRemove, firstLabel, secondLabel, emptyText }) {
+export default function PairList({
+  rows,
+  agents,
+  loading,
+  onRemove,
+  firstLabel,
+  secondLabel,
+  emptyText,
+  dayLabel,
+}) {
   const nameOf = (id) => agents.find((a) => a.id === id)?.name || "Removed agent";
+  const columns = dayLabel ? 4 : 3;
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -10,13 +20,14 @@ export default function PairList({ rows, agents, loading, onRemove, firstLabel, 
           <tr>
             <th className="px-4 py-3 font-medium">{firstLabel}</th>
             <th className="px-4 py-3 font-medium">{secondLabel}</th>
+            {dayLabel && <th className="px-4 py-3 font-medium">{dayLabel}</th>}
             <th className="px-4 py-3 text-right font-medium">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {loading && (
             <tr>
-              <td colSpan={3} className="px-4 py-10 text-center text-sm text-gray-400">
+              <td colSpan={columns} className="px-4 py-10 text-center text-sm text-gray-400">
                 Loading…
               </td>
             </tr>
@@ -26,6 +37,11 @@ export default function PairList({ rows, agents, loading, onRemove, firstLabel, 
               <tr key={row.id} className="hover:bg-gray-50/60">
                 <td className="px-4 py-3 font-medium text-[#111111]">{nameOf(row.agent1_id)}</td>
                 <td className="px-4 py-3 text-[#111111]">{nameOf(row.agent2_id)}</td>
+                {dayLabel && (
+                  <td className="px-4 py-3 text-[#111111]">
+                    {row.day && row.day !== "Any" ? row.day : "Any day"}
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   <div className="flex justify-end">
                     <button
@@ -41,7 +57,7 @@ export default function PairList({ rows, agents, loading, onRemove, firstLabel, 
             ))}
           {!loading && rows.length === 0 && (
             <tr>
-              <td colSpan={3} className="px-4 py-10 text-center text-sm text-gray-400">
+              <td colSpan={columns} className="px-4 py-10 text-center text-sm text-gray-400">
                 {emptyText}
               </td>
             </tr>

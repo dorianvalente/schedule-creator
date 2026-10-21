@@ -9,6 +9,16 @@
     "agent2_id": {
       "type": "string",
       "description": "Second agent in an ideal pairing"
+    },
+    "day": {
+      "type": "string",
+      "description": "Preferred ride day for this pairing. 'Any' leaves the day open",
+      "enum": [
+        "Any",
+        "Tuesday",
+        "Thursday"
+      ],
+      "default": "Any"
     }
   },
   "required": [

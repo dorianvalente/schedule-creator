@@ -5,9 +5,10 @@ import { pairKey } from "@/lib/scheduler";
 const SELECT_CLASS =
   "w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]";
 
-export default function PairForm({ agents, existingKeys, onAdd, firstLabel, secondLabel }) {
+export default function PairForm({ agents, existingKeys, onAdd, firstLabel, secondLabel, dayOptions }) {
   const [first, setFirst] = useState("");
   const [second, setSecond] = useState("");
+  const [day, setDay] = useState(dayOptions?.[0]?.value || "Any");
 
   const sameAgent = !!first && first === second;
   const duplicate = !!first && !!second && existingKeys.has(pairKey(first, second));
@@ -15,7 +16,7 @@ export default function PairForm({ agents, existingKeys, onAdd, firstLabel, seco
 
   const submit = () => {
     if (disabled) return;
-    onAdd(first, second);
+    onAdd(first, second, dayOptions ? day : undefined);
     setFirst("");
     setSecond("");
   };
@@ -44,6 +45,18 @@ export default function PairForm({ agents, existingKeys, onAdd, firstLabel, seco
             {options}
           </select>
         </div>
+        {dayOptions && (
+          <div className="sm:w-40">
+            <label className="mb-1 block text-xs font-medium text-gray-500">Preferred day</label>
+            <select value={day} onChange={(e) => setDay(e.target.value)} className={SELECT_CLASS}>
+              {dayOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <button
           onClick={submit}
           disabled={disabled}
