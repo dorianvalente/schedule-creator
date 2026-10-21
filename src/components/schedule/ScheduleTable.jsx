@@ -41,6 +41,7 @@ export default function ScheduleTable({
   agents,
   days,
   partnerIdFor,
+  assignedIdsFor,
   agentById,
   onSetPartner,
   onClear,
@@ -110,6 +111,7 @@ export default function ScheduleTable({
                         partner={partnerId ? agentById(partnerId) : null}
                         agents={agents}
                         selfId={a.id}
+                        taken={assignedIdsFor(d.key)}
                         onChange={(v) => onSetPartner(d.key, a.id, v)}
                         isBlocked={(otherId) => blocked.has(pairKey(a.id, otherId))}
                       />
@@ -125,7 +127,7 @@ export default function ScheduleTable({
   );
 }
 
-function PartnerSelect({ value, partner, agents, selfId, onChange, isBlocked }) {
+function PartnerSelect({ value, partner, agents, selfId, taken = new Set(), onChange, isBlocked }) {
   const role = partner ? effectiveRole(partner) : null;
   return (
     <Select
@@ -144,7 +146,7 @@ function PartnerSelect({ value, partner, agents, selfId, onChange, isBlocked }) 
           —
         </SelectItem>
         {agents
-          .filter((a) => a.id !== selfId)
+          .filter((a) => a.id !== selfId && (a.id === value || !taken.has(a.id)))
           .map((a) => (
             <SelectItem
               key={a.id}

@@ -144,6 +144,16 @@ export default function Schedule() {
     return p.agent1Id === agentId ? p.agent2Id : p.agent1Id;
   };
 
+  // Everyone already placed on a given day, so they can be hidden from the picker
+  const assignedIdsFor = (day) => {
+    const ids = new Set();
+    schedule[day].forEach((p) => {
+      if (p.agent1Id) ids.add(p.agent1Id);
+      if (p.agent2Id) ids.add(p.agent2Id);
+    });
+    return ids;
+  };
+
   const sortedAgents = [...agentsAtLocation].sort((a, b) => {
     const rank = ROLE_ORDER[effectiveRole(a)] - ROLE_ORDER[effectiveRole(b)];
     return rank !== 0 ? rank : a.name.localeCompare(b.name);
@@ -260,6 +270,7 @@ export default function Schedule() {
         agents={sortedAgents}
         days={days}
         partnerIdFor={partnerIdFor}
+        assignedIdsFor={assignedIdsFor}
         agentById={agentById}
         onSetPartner={setPartner}
         onClear={clearDay}
