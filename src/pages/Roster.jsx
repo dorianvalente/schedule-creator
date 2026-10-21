@@ -40,9 +40,7 @@ export default function Roster() {
 
   const loadLocations = async () => {
     const res = await base44.entities.Location.filter({}, { sort: "name" });
-    const items = res.items || [];
-    setLocations(items);
-    setLocation((cur) => cur || items[0]?.name || "");
+    setLocations(res.items || []);
   };
 
   useEffect(() => {
@@ -143,9 +141,11 @@ export default function Roster() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111]">Roster</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {counts.manager} managers · {counts.one_month} 1 Month · {counts.sna} SNA · {counts.rpa} RPA · {counts.tenured} tenured · {counts.veteran} veteran
-          </p>
+          {location && (
+            <p className="mt-1 text-sm text-gray-500">
+              {counts.manager} managers · {counts.one_month} 1 Month · {counts.sna} SNA · {counts.rpa} RPA · {counts.tenured} tenured · {counts.veteran} veteran
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -192,7 +192,11 @@ export default function Roster() {
         value={location}
         onChange={setLocation}
         id="roster-location"
-        countLabel={`${locationAgents.length} agent${locationAgents.length === 1 ? "" : "s"} at this location`}
+        countLabel={
+          location
+            ? `${locationAgents.length} agent${locationAgents.length === 1 ? "" : "s"} at this location`
+            : "Select a location to see its roster"
+        }
       />
 
       {showForm && (
@@ -439,7 +443,7 @@ export default function Roster() {
                 <td colSpan={showContractDate ? 8 : 7} className="px-4 py-10 text-center text-sm text-gray-400">
                   {location
                     ? "No agents at this location yet. Add one above to get started."
-                    : "No agents yet. Add your first agent to start building schedules."}
+                    : "Select a location above to see its roster."}
                 </td>
               </tr>
             )}

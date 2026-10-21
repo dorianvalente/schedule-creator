@@ -21,6 +21,7 @@ export default function LocationPicker({
         className="min-w-[180px] rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-[#111111] outline-none focus:border-[#111111]"
       >
         {locations.length === 0 && <option value="">No locations yet</option>}
+        {locations.length > 0 && !value && <option value="">Select a location</option>}
         {locations.map((l) => (
           <option key={l.id} value={l.name}>
             {l.name}
