@@ -4,7 +4,7 @@ import { Sparkles, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { autoAssign, ROLE_ORDER, effectiveRole } from "@/lib/scheduler";
 import ScheduleTable from "@/components/schedule/ScheduleTable";
-import LocationPicker from "@/components/schedule/LocationPicker";
+import LocationPicker from "@/components/LocationPicker";
 
 const DAY_OFFSETS = { Tuesday: 1, Thursday: 3 };
 const DAYS = ["Tuesday", "Thursday"];
@@ -252,7 +252,7 @@ export default function Schedule() {
         locations={locations}
         value={location}
         onChange={setLocation}
-        agentCount={agentsAtLocation.length}
+        countLabel={`${agentsAtLocation.length} active agent${agentsAtLocation.length === 1 ? "" : "s"} at this location`}
       />
 
       <ScheduleTable

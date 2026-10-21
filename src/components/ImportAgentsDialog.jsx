@@ -15,7 +15,7 @@ function normalizeRole(value) {
   return null;
 }
 
-export default function ImportAgentsDialog({ onClose, onImported }) {
+export default function ImportAgentsDialog({ onClose, onImported, location = "" }) {
   const [tab, setTab] = useState("paste");
   const [text, setText] = useState("");
   const [rows, setRows] = useState([]);
@@ -74,7 +74,13 @@ export default function ImportAgentsDialog({ onClose, onImported }) {
       await base44.entities.Agent.bulkCreate(
         pending.map((a) => {
           const isAuto = a.role === "auto";
-          return { name: a.name, role: isAuto ? "one_month" : a.role, manual_role: !isAuto, active: true };
+          return {
+            name: a.name,
+            role: isAuto ? "one_month" : a.role,
+            manual_role: !isAuto,
+            location,
+            active: true,
+          };
         })
       );
       onImported();

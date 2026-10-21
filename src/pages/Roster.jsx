@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS, ROLE_ORDER, TENURE_OPTIONS, effectiveRole, formatName } from "@/lib/scheduler";
 import ImportAgentsDialog from "@/components/ImportAgentsDialog";
 import LocationManager from "@/components/LocationManager";
+import LocationPicker from "@/components/LocationPicker";
 
 const ROLE_STYLES = {
   manager: "bg-[#111111] text-white",
@@ -21,6 +22,7 @@ export default function Roster() {
   const [showImport, setShowImport] = useState(false);
   const [showLocations, setShowLocations] = useState(false);
   const [locations, setLocations] = useState([]);
+  const [location, setLocation] = useState("");
   const [draft, setDraft] = useState({ name: "", role: "auto", team: "", location: "", fa: false });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: "", role: "auto", team: "" });
@@ -37,7 +39,9 @@ export default function Roster() {
 
   const loadLocations = async () => {
     const res = await base44.entities.Location.filter({}, { sort: "name" });
-    setLocations(res.items || []);
+    const items = res.items || [];
+    setLocations(items);
+    setLocation((cur) => cur || items[0]?.name || "");
   };
 
   useEffect(() => {
@@ -57,7 +61,7 @@ export default function Roster() {
       fa: !!draft.fa,
       active: true,
     });
-    setDraft({ name: "", role: "auto", team: "", location: "", fa: false });
+    setDraft({ name: "", role: "auto", team: "", location, fa: false });
     setShowForm(false);
     loadAgents();
   };
@@ -104,25 +108,27 @@ export default function Roster() {
     loadAgents();
   };
 
-  const sorted = [...agents].sort((a, b) => {
+  const locationAgents = agents.filter((a) => (a.location || "") === location);
+
+  const sorted = [...locationAgents].sort((a, b) => {
     const ra = effectiveRole(a);
     const rb = effectiveRole(b);
     if (ROLE_ORDER[ra] !== ROLE_ORDER[rb]) return ROLE_ORDER[ra] - ROLE_ORDER[rb];
     return a.name.localeCompare(b.name);
   });
 
-  const managerNames = agents
+  const managerNames = locationAgents
     .filter((a) => effectiveRole(a) === "manager")
     .map((a) => a.name)
     .sort((a, b) => a.localeCompare(b));
 
   const counts = {
-    manager: agents.filter((a) => effectiveRole(a) === "manager").length,
-    one_month: agents.filter((a) => effectiveRole(a) === "one_month").length,
-    sna: agents.filter((a) => effectiveRole(a) === "sna").length,
-    rpa: agents.filter((a) => effectiveRole(a) === "rpa").length,
-    tenured: agents.filter((a) => effectiveRole(a) === "tenured").length,
-    veteran: agents.filter((a) => effectiveRole(a) === "veteran").length,
+    manager: locationAgents.filter((a) => effectiveRole(a) === "manager").length,
+    one_month: locationAgents.filter((a) => effectiveRole(a) === "one_month").length,
+    sna: locationAgents.filter((a) => effectiveRole(a) === "sna").length,
+    rpa: locationAgents.filter((a) => effectiveRole(a) === "rpa").length,
+    tenured: locationAgents.filter((a) => effectiveRole(a) === "tenured").length,
+    veteran: locationAgents.filter((a) => effectiveRole(a) === "veteran").length,
   };
 
   return (
@@ -150,7 +156,10 @@ export default function Roster() {
             Import
           </button>
           <button
-            onClick={() => setShowForm((s) => !s)}
+            onClick={() => {
+              setDraft((d) => ({ ...d, location }));
+              setShowForm((s) => !s);
+            }}
             className="inline-flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333]"
           >
             <UserPlus className="h-4 w-4" />
@@ -158,6 +167,14 @@ export default function Roster() {
           </button>
         </div>
       </div>
+
+      <LocationPicker
+        locations={locations}
+        value={location}
+        onChange={setLocation}
+        id="roster-location"
+        countLabel={`${locationAgents.length} agent${locationAgents.length === 1 ? "" : "s"} at this location`}
+      />
 
       {showForm && (
         <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -381,7 +398,9 @@ export default function Roster() {
             {!loading && sorted.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
-                  No agents yet. Add your first agent to start building schedules.
+                  {location
+                    ? "No agents at this location yet. Add one above to get started."
+                    : "No agents yet. Add your first agent to start building schedules."}
                 </td>
               </tr>
             )}
@@ -390,7 +409,7 @@ export default function Roster() {
       </div>
 
       {showImport && (
-        <ImportAgentsDialog onClose={() => setShowImport(false)} onImported={loadAgents} />
+        <ImportAgentsDialog onClose={() => setShowImport(false)} onImported={loadAgents} location={location} />
       )}
 
       {showLocations && (
