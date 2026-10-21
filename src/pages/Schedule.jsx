@@ -157,7 +157,8 @@ export default function Schedule() {
       // Replace this location's pairings for the week, leaving other locations alone
       const ids = locationAgentIds;
       const existing = await base44.entities.Pairing.filter({ week_start: weekKey });
-      const mine = (existing.items || []).filter(
+      const existingRows = Array.isArray(existing) ? existing : existing?.items || [];
+      const mine = existingRows.filter(
         (p) => ids.includes(p.agent1_id) || ids.includes(p.agent2_id)
       );
       if (mine.length > 0) {
