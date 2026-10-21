@@ -15,8 +15,13 @@
       "description": "Preferred ride day for this pairing. 'Any' leaves the day open",
       "enum": [
         "Any",
+        "Monday",
         "Tuesday",
-        "Thursday"
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
       ],
       "default": "Any"
     }

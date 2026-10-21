@@ -5,6 +5,26 @@
     "name": {
       "type": "string",
       "description": "Name of a ride location"
+    },
+    "days": {
+      "type": "array",
+      "description": "Ride days scheduled at this location, set by admins",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        ]
+      },
+      "default": [
+        "Tuesday",
+        "Thursday"
+      ]
     }
   },
   "required": [

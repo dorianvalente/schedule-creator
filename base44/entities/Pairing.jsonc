@@ -10,8 +10,13 @@
       "type": "string",
       "description": "Which ride day of the week",
       "enum": [
+        "Monday",
         "Tuesday",
-        "Thursday"
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
       ]
     },
     "agent1_id": {

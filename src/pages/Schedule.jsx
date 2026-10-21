@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { addDays, addWeeks, format, startOfWeek } from "date-fns";
 import { Sparkles, Save, ChevronLeft, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { autoAssign, ROLE_ORDER, effectiveRole } from "@/lib/scheduler";
+import { autoAssign, DAY_OFFSETS, DEFAULT_DAYS, ROLE_ORDER, effectiveRole } from "@/lib/scheduler";
 import ScheduleTable from "@/components/schedule/ScheduleTable";
 import LocationPicker from "@/components/LocationPicker";
 
-const DAY_OFFSETS = { Tuesday: 1, Thursday: 3 };
-const DAYS = ["Tuesday", "Thursday"];
+const emptyByDay = (days) => Object.fromEntries(days.map((d) => [d, []]));
 
 function nextId() {
   return `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -16,7 +15,7 @@ function nextId() {
 export default function Schedule() {
   const [agents, setAgents] = useState([]);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [schedule, setSchedule] = useState({ Tuesday: [], Thursday: [] });
+  const [schedule, setSchedule] = useState({});
   const [dirty, setDirty] = useState(false);
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
@@ -28,6 +27,13 @@ export default function Schedule() {
   const [location, setLocation] = useState("");
 
   const weekKey = format(weekStart, "yyyy-MM-dd");
+
+  // Ride days come from the location's admin settings, Monday first.
+  const locationRecord = locations.find((l) => l.name === location) || null;
+  const days = (locationRecord?.days?.length ? [...locationRecord.days] : DEFAULT_DAYS).sort(
+    (a, b) => DAY_OFFSETS[a] - DAY_OFFSETS[b]
+  );
+  const daysKey = days.join("|");
 
   const loadAgents = async () => {
     setLoadingAgents(true);
@@ -44,7 +50,7 @@ export default function Schedule() {
 
   const loadSchedule = async () => {
     if (!location) {
-      setSchedule({ Tuesday: [], Thursday: [] });
+      setSchedule({});
       setDirty(false);
       return;
     }
@@ -61,7 +67,7 @@ export default function Schedule() {
         { sort: "sort_order" }
       );
       const items = res.items || [];
-      const byDay = { Tuesday: [], Thursday: [] };
+      const byDay = emptyByDay(days);
       items.forEach((p) => {
         if (byDay[p.day]) {
           byDay[p.day].push({
@@ -98,25 +104,25 @@ export default function Schedule() {
     if (loadingAgents) return;
     loadSchedule();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekKey, location, agents]);
+  }, [weekKey, location, agents, daysKey]);
 
-  const dateFor = (day) => addDays(weekStart, DAY_OFFSETS[day]);
+  const dateFor = (day) => addDays(weekStart, DAY_OFFSETS[day] ?? 0);
 
   // Auto-assign fills in around anything already placed: existing pairings are
   // kept as-is and only the agents still free that day are auto-paired.
   const runAutoAssign = () => {
     setSchedule((s) => {
-      const next = { Tuesday: [], Thursday: [] };
-      DAYS.forEach((day) => {
-        const locked = s[day].filter((p) => p.agent1Id);
+      const next = emptyByDay(days);
+      days.forEach((day) => {
+        const locked = (s[day] || []).filter((p) => p.agent1Id);
         const lockedIds = new Set();
         locked.forEach((p) => {
           lockedIds.add(p.agent1Id);
           if (p.agent2Id) lockedIds.add(p.agent2Id);
         });
         const free = agentsAtLocation.filter((a) => !lockedIds.has(a.id));
-        const result = autoAssign(free, agentsPerManager, exclusions, preferred);
-        const auto = result[day].map((p) => ({
+        const result = autoAssign(free, agentsPerManager, exclusions, preferred, days);
+        const auto = (result[day] || []).map((p) => ({
           id: nextId(),
           agent1Id: p.agent1?.id ?? null,
           agent2Id: p.agent2?.id ?? null,
@@ -138,7 +144,7 @@ export default function Schedule() {
   // pairing that day so nobody is booked twice.
   const setPartner = (day, agentId, partnerId) => {
     setSchedule((s) => {
-      const list = s[day];
+      const list = s[day] || [];
       const mine = list.find((p) => p.agent1Id === agentId || p.agent2Id === agentId);
       if (!mine && !partnerId) return s;
       const next = list.filter(
@@ -153,7 +159,7 @@ export default function Schedule() {
   const agentById = (id) => agentsAtLocation.find((a) => a.id === id) || null;
 
   const partnerIdFor = (day, agentId) => {
-    const p = schedule[day].find((x) => x.agent1Id === agentId || x.agent2Id === agentId);
+    const p = (schedule[day] || []).find((x) => x.agent1Id === agentId || x.agent2Id === agentId);
     if (!p) return null;
     return p.agent1Id === agentId ? p.agent2Id : p.agent1Id;
   };
@@ -161,7 +167,7 @@ export default function Schedule() {
   // Everyone already placed on a given day, so they can be hidden from the picker
   const assignedIdsFor = (day) => {
     const ids = new Set();
-    schedule[day].forEach((p) => {
+    (schedule[day] || []).forEach((p) => {
       if (p.agent1Id) ids.add(p.agent1Id);
       if (p.agent2Id) ids.add(p.agent2Id);
     });
@@ -173,7 +179,7 @@ export default function Schedule() {
     return rank !== 0 ? rank : a.name.localeCompare(b.name);
   });
 
-  const days = DAYS.map((day) => ({ key: day, date: format(dateFor(day), "MMM d") }));
+  const dayColumns = days.map((day) => ({ key: day, date: format(dateFor(day), "MMM d") }));
 
   const save = async () => {
     setSaving(true);
@@ -189,8 +195,8 @@ export default function Schedule() {
         await base44.entities.Pairing.deleteMany({ id: { $in: mine.map((p) => p.id) } });
       }
       const records = [];
-      DAYS.forEach((day) => {
-        schedule[day].forEach((p, idx) => {
+      days.forEach((day) => {
+        (schedule[day] || []).forEach((p, idx) => {
           if (!p.agent1Id) return;
           records.push({
             week_start: weekKey,
@@ -256,7 +262,7 @@ export default function Schedule() {
           </div>
           <button
             onClick={runAutoAssign}
-            disabled={busy || !location || agentsAtLocation.length === 0}
+            disabled={busy || !location || agentsAtLocation.length === 0 || days.length === 0}
             className="inline-flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Sparkles className="h-4 w-4" />
@@ -282,7 +288,7 @@ export default function Schedule() {
 
       <ScheduleTable
         agents={sortedAgents}
-        days={days}
+        days={dayColumns}
         partnerIdFor={partnerIdFor}
         assignedIdsFor={assignedIdsFor}
         agentById={agentById}

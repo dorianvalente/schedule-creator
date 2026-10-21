@@ -15,13 +15,33 @@ export const ROLE_LABELS = {
 
 export const ROLE_ORDER = { manager: 0, one_month: 1, sna: 2, rpa: 3, tenured: 4, veteran: 5 };
 
-export const DAY_NAMES = ["Tuesday", "Thursday"];
+// Ride days a location can run, Monday first to match the week start.
+export const WEEKDAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+export const DAY_OFFSETS = {
+  Monday: 0,
+  Tuesday: 1,
+  Wednesday: 2,
+  Thursday: 3,
+  Friday: 4,
+  Saturday: 5,
+  Sunday: 6,
+};
+
+export const DEFAULT_DAYS = ["Tuesday", "Thursday"];
 
 // Day choices for a preferred pairing: "Any" leaves the day open.
 export const DAY_OPTIONS = [
   { value: "Any", label: "Any day" },
-  { value: "Tuesday", label: "Tuesday" },
-  { value: "Thursday", label: "Thursday" },
+  ...WEEKDAYS.map((d) => ({ value: d, label: d })),
 ];
 
 // Tenure options for pickers. "auto" means "calculate from the date added".
@@ -133,14 +153,21 @@ export function pairingTypeFor(agent1, agent2) {
   return `${ROLE_LABELS[roles[0]]} + ${ROLE_LABELS[roles[1]]}`;
 }
 
-// Builds the week's pairings. `agentsPerManager` is how many agents a manager
-// rides with over the week: 1 = the same agent both days, 2 = the newest agent
-// on their team on Tuesday and the next newest on Thursday.
-// A preferred pairing with a specific day is only honoured on that day; "Any"
-// counts for both days. Two agents with a specific-day wish never ride together
-// on the other day.
-export function autoAssign(agents, agentsPerManager = 1, exclusions = [], preferred = []) {
-  const count = agentsPerManager === 2 ? 2 : 1;
+// Builds the week's pairings for the ride days a location runs.
+// `agentsPerManager` is how many agents a manager rides with over the week:
+// 1 = the same agent every day, 2 = the newest agent on their team on the first
+// ride day and the next newest on the second. A preferred pairing with a
+// specific day is only honoured on that day; "Any" counts for every ride day.
+// Two agents with a specific-day wish never ride together on the other days.
+export function autoAssign(
+  agents,
+  agentsPerManager = 1,
+  exclusions = [],
+  preferred = [],
+  days = DEFAULT_DAYS
+) {
+  const dayList = days?.length ? days : DEFAULT_DAYS;
+  const count = Math.min(agentsPerManager === 2 ? 2 : 1, dayList.length);
   const blocked = exclusionKeys(exclusions);
   const isBlocked = (aId, bId) => blocked.has(pairKey(aId, bId));
   const wishes = preferredMap(preferred);
@@ -155,16 +182,16 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = [], prefer
   const byId = new Map(agents.map((a) => [a.id, a]));
   const otherIds = new Set(others.map((x) => x.agent.id));
 
-  const out = { Tuesday: [], Thursday: [] };
-  const free = {
-    Tuesday: new Set(agents.map((a) => a.id)),
-    Thursday: new Set(agents.map((a) => a.id)),
-  };
-  const take = (id) => {
-    free.Tuesday.delete(id);
-    free.Thursday.delete(id);
-  };
-  const freeBoth = (id) => free.Tuesday.has(id) && free.Thursday.has(id);
+  const out = {};
+  const free = {};
+  dayList.forEach((d) => {
+    out[d] = [];
+    free[d] = new Set(agents.map((a) => a.id));
+  });
+  const take = (id) => dayList.forEach((d) => free[d].delete(id));
+  const freeEveryDay = (id) => dayList.every((d) => free[d].has(id));
+  const rideEveryDay = (pair) =>
+    dayList.forEach((d) => out[d].push({ agent1: pair.agent1, agent2: pair.agent2 }));
 
   // 1. Preferred pairings come first: whenever both agents are free on the days
   //    the pairing asked for and are not excluded, they ride together then.
@@ -174,9 +201,12 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = [], prefer
     const a2 = byId.get(wish.agent2_id);
     if (!a1 || !a2 || !otherIds.has(a1.id) || !otherIds.has(a2.id)) continue;
     if (isBlocked(a1.id, a2.id)) continue;
-    const days = wish.day && wish.day !== "Any" ? [wish.day] : DAY_NAMES;
-    if (!days.every((d) => free[d].has(a1.id) && free[d].has(a2.id))) continue;
-    days.forEach((d) => {
+    const applyDays = (wish.day && wish.day !== "Any" ? [wish.day] : dayList).filter(
+      (d) => out[d]
+    );
+    if (applyDays.length === 0) continue;
+    if (!applyDays.every((d) => free[d].has(a1.id) && free[d].has(a2.id))) continue;
+    applyDays.forEach((d) => {
       free[d].delete(a1.id);
       free[d].delete(a2.id);
       out[d].push({ agent1: a1, agent2: a2 });
@@ -191,7 +221,7 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = [], prefer
     const team = others
       .filter(
         (x) =>
-          freeBoth(x.agent.id) &&
+          freeEveryDay(x.agent.id) &&
           onTeamOf(x.agent, m.agent) &&
           !isBlocked(x.agent.id, m.agent.id) &&
           !isDayLocked(x.agent.id, m.agent.id)
@@ -218,7 +248,7 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = [], prefer
     );
     for (const c of candidates) {
       if (mates.length >= count) break;
-      if (!freeBoth(c.agent.id)) continue;
+      if (!freeEveryDay(c.agent.id)) continue;
       if (isBlocked(c.agent.id, m.agent.id)) continue;
       if (isDayLocked(c.agent.id, m.agent.id)) continue;
       take(c.agent.id);
@@ -226,14 +256,13 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = [], prefer
     }
     if (mates.length === 0) continue;
     take(m.agent.id);
-    out.Tuesday.push({ agent1: m.agent, agent2: mates[0] });
-    out.Thursday.push({ agent1: m.agent, agent2: mates[1] || mates[0] });
+    dayList.forEach((d, i) => out[d].push({ agent1: m.agent, agent2: mates[i] || mates[0] }));
   }
 
   // 3. Remaining agents pair least-experienced with most-experienced. An
   //    excluded pair is skipped and the least experienced agent looks further
   //    down the list for a partner instead.
-  const rest = others.filter((x) => freeBoth(x.agent.id));
+  const rest = others.filter((x) => freeEveryDay(x.agent.id));
   while (rest.length > 1) {
     const first = rest.shift();
     let pick = -1;
@@ -244,29 +273,26 @@ export function autoAssign(agents, agentsPerManager = 1, exclusions = [], prefer
       break;
     }
     if (pick === -1) {
-      out.Tuesday.push({ agent1: first.agent, agent2: null });
-      out.Thursday.push({ agent1: first.agent, agent2: null });
+      rideEveryDay({ agent1: first.agent, agent2: null });
       take(first.agent.id);
       continue;
     }
     const second = rest.splice(pick, 1)[0];
-    out.Tuesday.push({ agent1: first.agent, agent2: second.agent });
-    out.Thursday.push({ agent1: first.agent, agent2: second.agent });
+    rideEveryDay({ agent1: first.agent, agent2: second.agent });
     take(first.agent.id);
     take(second.agent.id);
   }
 
-  // 4. Anyone still free on both days rides solo. Agents a day-specific pairing
-  //    left free on the other day are placed for that day only.
+  // 4. Anyone still free on every ride day rides solo. Agents a day-specific
+  //    pairing left free on the other days are placed for those days only.
   agents
-    .filter((a) => freeBoth(a.id))
+    .filter((a) => freeEveryDay(a.id))
     .forEach((a) => {
-      out.Tuesday.push({ agent1: a, agent2: null });
-      out.Thursday.push({ agent1: a, agent2: null });
+      rideEveryDay({ agent1: a, agent2: null });
       take(a.id);
     });
 
-  for (const day of DAY_NAMES) {
+  for (const day of dayList) {
     const remaining = others.filter((x) => free[day].has(x.agent.id));
     while (remaining.length > 1) {
       const first = remaining.shift();
