@@ -1,4 +1,13 @@
 import { ROLE_LABELS, effectiveRole, exclusionKeys, pairKey } from "@/lib/scheduler";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const NONE = "__none__";
 
 const ROLE_CELL = {
   manager: "border-gray-300 bg-[#f1f1f1] text-[#111111]",
@@ -16,6 +25,16 @@ const ROLE_ROW = {
   rpa: "bg-violet-50",
   tenured: "bg-emerald-50",
   veteran: "bg-indigo-50",
+};
+
+// one color per agent inside the open list, so every name shows its own tenure
+const ROLE_OPTION = {
+  manager: "bg-[#e9e9e9] text-[#111111] focus:bg-[#dedede] focus:text-[#111111]",
+  one_month: "bg-amber-100 text-amber-900 focus:bg-amber-200 focus:text-amber-900",
+  sna: "bg-sky-100 text-sky-900 focus:bg-sky-200 focus:text-sky-900",
+  rpa: "bg-violet-100 text-violet-900 focus:bg-violet-200 focus:text-violet-900",
+  tenured: "bg-emerald-100 text-emerald-900 focus:bg-emerald-200 focus:text-emerald-900",
+  veteran: "bg-indigo-100 text-indigo-900 focus:bg-indigo-200 focus:text-indigo-900",
 };
 
 export default function ScheduleTable({
@@ -109,23 +128,36 @@ export default function ScheduleTable({
 function PartnerSelect({ value, partner, agents, selfId, onChange, isBlocked }) {
   const role = partner ? effectiveRole(partner) : null;
   return (
-    <select
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value || null)}
-      className={`w-full rounded-md border px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-[#111111] ${
-        role ? ROLE_CELL[role] : "border-gray-200 bg-white text-gray-400"
-      }`}
+    <Select
+      value={value ?? NONE}
+      onValueChange={(v) => onChange(v === NONE ? null : v)}
     >
-      <option value="">—</option>
-      {agents
-        .filter((a) => a.id !== selfId)
-        .map((a) => (
-          <option key={a.id} value={a.id} disabled={isBlocked(a.id)}>
-            {a.name} · {ROLE_LABELS[effectiveRole(a)]}
-            {a.fa ? " · FA" : ""}
-            {isBlocked(a.id) ? " · excluded" : ""}
-          </option>
-        ))}
-    </select>
+      <SelectTrigger
+        className={`h-auto w-full rounded-md border px-2.5 py-1.5 text-sm shadow-none focus:ring-1 focus:ring-[#111111] ${
+          role ? ROLE_CELL[role] : "border-gray-200 bg-white text-gray-400"
+        }`}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="min-w-[15rem]">
+        <SelectItem value={NONE} className="text-gray-400">
+          —
+        </SelectItem>
+        {agents
+          .filter((a) => a.id !== selfId)
+          .map((a) => (
+            <SelectItem
+              key={a.id}
+              value={a.id}
+              disabled={isBlocked(a.id)}
+              className={ROLE_OPTION[effectiveRole(a)]}
+            >
+              {a.name} · {ROLE_LABELS[effectiveRole(a)]}
+              {a.fa ? " · FA" : ""}
+              {isBlocked(a.id) ? " · excluded" : ""}
+            </SelectItem>
+          ))}
+      </SelectContent>
+    </Select>
   );
 }
