@@ -102,16 +102,30 @@ export default function Schedule() {
 
   const dateFor = (day) => addDays(weekStart, DAY_OFFSETS[day]);
 
+  // Auto-assign fills in around anything already placed: existing pairings are
+  // kept as-is and only the agents still free that day are auto-paired.
   const runAutoAssign = () => {
-    const result = autoAssign(agentsAtLocation, agentsPerManager, exclusions, preferred);
-    const build = (list) =>
-      list.map((p) => ({
-        id: nextId(),
-        agent1Id: p.agent1?.id ?? null,
-        agent2Id: p.agent2?.id ?? null,
-        saved: false,
-      }));
-    setSchedule({ Tuesday: build(result.Tuesday), Thursday: build(result.Thursday) });
+    setSchedule((s) => {
+      const next = { Tuesday: [], Thursday: [] };
+      DAYS.forEach((day) => {
+        const locked = s[day].filter((p) => p.agent1Id);
+        const lockedIds = new Set();
+        locked.forEach((p) => {
+          lockedIds.add(p.agent1Id);
+          if (p.agent2Id) lockedIds.add(p.agent2Id);
+        });
+        const free = agentsAtLocation.filter((a) => !lockedIds.has(a.id));
+        const result = autoAssign(free, agentsPerManager, exclusions, preferred);
+        const auto = result[day].map((p) => ({
+          id: nextId(),
+          agent1Id: p.agent1?.id ?? null,
+          agent2Id: p.agent2?.id ?? null,
+          saved: false,
+        }));
+        next[day] = [...locked, ...auto];
+      });
+      return next;
+    });
     setDirty(true);
   };
 
