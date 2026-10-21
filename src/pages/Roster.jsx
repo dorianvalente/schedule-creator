@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { UserPlus, Trash2, Pencil, X, Check, Upload, MapPin } from "lucide-react";
+import { UserPlus, Trash2, Pencil, X, Check, Upload, MapPin, CalendarDays } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS, ROLE_ORDER, TENURE_OPTIONS, effectiveRole, formatName } from "@/lib/scheduler";
 import ImportAgentsDialog from "@/components/ImportAgentsDialog";
@@ -23,7 +23,8 @@ export default function Roster() {
   const [showLocations, setShowLocations] = useState(false);
   const [locations, setLocations] = useState([]);
   const [location, setLocation] = useState("");
-  const [draft, setDraft] = useState({ name: "", role: "auto", team: "", location: "", fa: false });
+  const [showContractDate, setShowContractDate] = useState(true);
+  const [draft, setDraft] = useState({ name: "", role: "auto", team: "", location: "", contract_date: "", fa: false });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: "", role: "auto", team: "" });
 
@@ -58,10 +59,11 @@ export default function Roster() {
       manual_role: !isAuto,
       team: draft.team.trim(),
       location: draft.location,
+      contract_date: draft.contract_date,
       fa: !!draft.fa,
       active: true,
     });
-    setDraft({ name: "", role: "auto", team: "", location, fa: false });
+    setDraft({ name: "", role: "auto", team: "", location, contract_date: "", fa: false });
     setShowForm(false);
     loadAgents();
   };
@@ -103,6 +105,11 @@ export default function Roster() {
     loadAgents();
   };
 
+  const setContractDate = async (agent, contract_date) => {
+    await base44.entities.Agent.update(agent.id, { contract_date });
+    loadAgents();
+  };
+
   const removeAgent = async (id) => {
     await base44.entities.Agent.delete(id);
     loadAgents();
@@ -141,6 +148,18 @@ export default function Roster() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowContractDate((s) => !s)}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
+              showContractDate
+                ? "border-[#111111] bg-gray-50 text-[#111111]"
+                : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+            }`}
+            title={showContractDate ? "Hide contract date column" : "Show contract date column"}
+          >
+            <CalendarDays className="h-4 w-4" />
+            Contract date
+          </button>
           <button
             onClick={() => setShowLocations(true)}
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#111111] transition-colors hover:bg-gray-50"
@@ -234,6 +253,15 @@ export default function Roster() {
                 ))}
               </select>
             </div>
+            <div className="sm:w-44">
+              <label className="mb-1 block text-xs font-medium text-gray-500">Contract date</label>
+              <input
+                type="date"
+                value={draft.contract_date}
+                onChange={(e) => setDraft({ ...draft, contract_date: e.target.value })}
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-[#111111]"
+              />
+            </div>
             <label className="flex cursor-pointer items-center gap-2 pb-2.5">
               <input
                 type="checkbox"
@@ -261,7 +289,7 @@ export default function Roster() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
             <tr>
@@ -269,6 +297,7 @@ export default function Roster() {
               <th className="px-4 py-3 font-medium">Tenure</th>
               <th className="px-4 py-3 font-medium">Team</th>
               <th className="px-4 py-3 font-medium">Location</th>
+              {showContractDate && <th className="px-4 py-3 font-medium">Contract date</th>}
               <th className="px-4 py-3 font-medium">FA</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 text-right font-medium">Actions</th>
@@ -277,7 +306,7 @@ export default function Roster() {
           <tbody className="divide-y divide-gray-100">
             {loading && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
+                <td colSpan={showContractDate ? 8 : 7} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
               </tr>
             )}
             {!loading && sorted.map((agent) => (
@@ -353,6 +382,16 @@ export default function Roster() {
                     )}
                   </select>
                 </td>
+                {showContractDate && (
+                  <td className="px-4 py-3">
+                    <input
+                      type="date"
+                      value={(agent.contract_date || "").slice(0, 10)}
+                      onChange={(e) => setContractDate(agent, e.target.value)}
+                      className="w-full max-w-[150px] rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 outline-none focus:border-[#111111]"
+                    />
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
@@ -397,7 +436,7 @@ export default function Roster() {
             ))}
             {!loading && sorted.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                <td colSpan={showContractDate ? 8 : 7} className="px-4 py-10 text-center text-sm text-gray-400">
                   {location
                     ? "No agents at this location yet. Add one above to get started."
                     : "No agents yet. Add your first agent to start building schedules."}

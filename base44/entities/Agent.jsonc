@@ -31,6 +31,11 @@
       "type": "string",
       "description": "Ride location this agent belongs to. Schedules are built one location at a time"
     },
+    "contract_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Optional contract date for the agent"
+    },
     "fa": {
       "type": "boolean",
       "description": "Whether this agent is marked FA",
