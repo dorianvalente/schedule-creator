@@ -1,10 +1,22 @@
 import { useEffect, useState } from "react";
-import { UserPlus, Trash2, Pencil, X, Check, Upload, MapPin, CalendarDays } from "lucide-react";
+import {
+  UserPlus,
+  Trash2,
+  Pencil,
+  X,
+  Check,
+  Upload,
+  MapPin,
+  CalendarDays,
+  Lock,
+  ShieldCheck,
+} from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS, ROLE_ORDER, TENURE_OPTIONS, effectiveRole, formatName } from "@/lib/scheduler";
 import ImportAgentsDialog from "@/components/ImportAgentsDialog";
 import LocationManager from "@/components/LocationManager";
 import LocationPicker from "@/components/LocationPicker";
+import AdminLocationsDialog from "@/components/admin/AdminLocationsDialog";
 
 const ROLE_STYLES = {
   manager: "bg-[#111111] text-white",
@@ -15,12 +27,16 @@ const ROLE_STYLES = {
   veteran: "bg-indigo-100 text-indigo-800 border border-indigo-200",
 };
 
-export default function Roster() {
+const asArray = (res) => (Array.isArray(res) ? res : res?.items || []);
+
+export default function RosterTab() {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [me, setMe] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showLocations, setShowLocations] = useState(false);
+  const [showAdmins, setShowAdmins] = useState(false);
   const [locations, setLocations] = useState([]);
   const [location, setLocation] = useState("");
   const [showContractDate, setShowContractDate] = useState(true);
@@ -28,11 +44,15 @@ export default function Roster() {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: "", role: "auto", team: "" });
 
+  // An admin with a location on their profile manages that location only.
+  const scope = me?.location || "";
+  const activeLocation = scope || location;
+
   const loadAgents = async () => {
     setLoading(true);
     try {
       const res = await base44.entities.Agent.filter({}, { sort: "name" });
-      setAgents(res.items || []);
+      setAgents(asArray(res));
     } finally {
       setLoading(false);
     }
@@ -40,13 +60,21 @@ export default function Roster() {
 
   const loadLocations = async () => {
     const res = await base44.entities.Location.filter({}, { sort: "name" });
-    setLocations(res.items || []);
+    setLocations(asArray(res));
   };
 
   useEffect(() => {
     loadAgents();
     loadLocations();
+    base44.auth
+      .me()
+      .then(setMe)
+      .catch(() => setMe(null));
   }, []);
+
+  useEffect(() => {
+    if (scope) setLocation(scope);
+  }, [scope]);
 
   const addAgent = async () => {
     if (!draft.name.trim()) return;
@@ -56,12 +84,12 @@ export default function Roster() {
       role: isAuto ? "one_month" : draft.role,
       manual_role: !isAuto,
       team: draft.team.trim(),
-      location: draft.location,
+      location: scope || draft.location,
       contract_date: draft.contract_date,
       fa: !!draft.fa,
       active: true,
     });
-    setDraft({ name: "", role: "auto", team: "", location, contract_date: "", fa: false });
+    setDraft({ name: "", role: "auto", team: "", location: activeLocation, contract_date: "", fa: false });
     setShowForm(false);
     loadAgents();
   };
@@ -98,8 +126,8 @@ export default function Roster() {
     loadAgents();
   };
 
-  const setAgentLocation = async (agent, location) => {
-    await base44.entities.Agent.update(agent.id, { location });
+  const setAgentLocation = async (agent, nextLocation) => {
+    await base44.entities.Agent.update(agent.id, { location: nextLocation });
     loadAgents();
   };
 
@@ -113,7 +141,7 @@ export default function Roster() {
     loadAgents();
   };
 
-  const locationAgents = agents.filter((a) => (a.location || "") === location);
+  const locationAgents = agents.filter((a) => (a.location || "") === activeLocation);
 
   const sorted = [...locationAgents].sort((a, b) => {
     const ra = effectiveRole(a);
@@ -136,18 +164,18 @@ export default function Roster() {
     veteran: locationAgents.filter((a) => effectiveRole(a) === "veteran").length,
   };
 
+  const showLocationColumn = !scope;
+  const colCount = 6 + (showLocationColumn ? 1 : 0) + (showContractDate ? 1 : 0);
+
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111]">Roster</h1>
-          {location && (
-            <p className="mt-1 text-sm text-gray-500">
-              {counts.manager} managers · {counts.one_month} 1 Month · {counts.sna} SNA · {counts.rpa} RPA · {counts.tenured} tenured · {counts.veteran} veteran
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-gray-500">
+          {activeLocation
+            ? `${counts.manager} managers · ${counts.one_month} 1 Month · ${counts.sna} SNA · ${counts.rpa} RPA · ${counts.tenured} tenured · ${counts.veteran} veteran`
+            : "Select a location to manage its roster."}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowContractDate((s) => !s)}
             className={`inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
@@ -160,13 +188,24 @@ export default function Roster() {
             <CalendarDays className="h-4 w-4" />
             Contract date
           </button>
-          <button
-            onClick={() => setShowLocations(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#111111] transition-colors hover:bg-gray-50"
-          >
-            <MapPin className="h-4 w-4" />
-            Locations
-          </button>
+          {!scope && (
+            <>
+              <button
+                onClick={() => setShowLocations(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#111111] transition-colors hover:bg-gray-50"
+              >
+                <MapPin className="h-4 w-4" />
+                Locations
+              </button>
+              <button
+                onClick={() => setShowAdmins(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#111111] transition-colors hover:bg-gray-50"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Admin access
+              </button>
+            </>
+          )}
           <button
             onClick={() => setShowImport(true)}
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#111111] transition-colors hover:bg-gray-50"
@@ -176,7 +215,7 @@ export default function Roster() {
           </button>
           <button
             onClick={() => {
-              setDraft((d) => ({ ...d, location }));
+              setDraft((d) => ({ ...d, location: activeLocation }));
               setShowForm((s) => !s);
             }}
             className="inline-flex items-center gap-1.5 rounded-md bg-[#111111] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333]"
@@ -187,17 +226,27 @@ export default function Roster() {
         </div>
       </div>
 
-      <LocationPicker
-        locations={locations}
-        value={location}
-        onChange={setLocation}
-        id="roster-location"
-        countLabel={
-          location
-            ? `${locationAgents.length} agent${locationAgents.length === 1 ? "" : "s"} at this location`
-            : "Select a location to see its roster"
-        }
-      />
+      {scope ? (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+          <Lock className="h-4 w-4 text-gray-400" />
+          <span className="text-sm font-medium text-[#111111]">{scope}</span>
+          <span className="text-xs text-gray-500">
+            You manage this location's roster only
+          </span>
+        </div>
+      ) : (
+        <LocationPicker
+          locations={locations}
+          value={location}
+          onChange={setLocation}
+          id="roster-location"
+          countLabel={
+            location
+              ? `${locationAgents.length} agent${locationAgents.length === 1 ? "" : "s"} at this location`
+              : "Select a location to see its roster"
+          }
+        />
+      )}
 
       {showForm && (
         <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -242,21 +291,23 @@ export default function Roster() {
                 ))}
               </select>
             </div>
-            <div className="sm:w-44">
-              <label className="mb-1 block text-xs font-medium text-gray-500">Location</label>
-              <select
-                value={draft.location}
-                onChange={(e) => setDraft({ ...draft, location: e.target.value })}
-                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
-              >
-                <option value="">No location</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={l.name}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!scope && (
+              <div className="sm:w-44">
+                <label className="mb-1 block text-xs font-medium text-gray-500">Location</label>
+                <select
+                  value={draft.location}
+                  onChange={(e) => setDraft({ ...draft, location: e.target.value })}
+                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
+                >
+                  <option value="">No location</option>
+                  {locations.map((l) => (
+                    <option key={l.id} value={l.name}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="sm:w-44">
               <label className="mb-1 block text-xs font-medium text-gray-500">Contract date</label>
               <input
@@ -300,7 +351,7 @@ export default function Roster() {
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Tenure</th>
               <th className="px-4 py-3 font-medium">Team</th>
-              <th className="px-4 py-3 font-medium">Location</th>
+              {showLocationColumn && <th className="px-4 py-3 font-medium">Location</th>}
               {showContractDate && <th className="px-4 py-3 font-medium">Contract date</th>}
               <th className="px-4 py-3 font-medium">FA</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -310,7 +361,7 @@ export default function Roster() {
           <tbody className="divide-y divide-gray-100">
             {loading && (
               <tr>
-                <td colSpan={showContractDate ? 8 : 7} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
+                <td colSpan={colCount} className="px-4 py-10 text-center text-sm text-gray-400">Loading…</td>
               </tr>
             )}
             {!loading && sorted.map((agent) => (
@@ -369,23 +420,25 @@ export default function Roster() {
                     <span className="text-gray-300">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3">
-                  <select
-                    value={agent.location || ""}
-                    onChange={(e) => setAgentLocation(agent, e.target.value)}
-                    className="w-full max-w-[160px] rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 outline-none focus:border-[#111111]"
-                  >
-                    <option value="">—</option>
-                    {locations.map((l) => (
-                      <option key={l.id} value={l.name}>
-                        {l.name}
-                      </option>
-                    ))}
-                    {agent.location && !locations.some((l) => l.name === agent.location) && (
-                      <option value={agent.location}>{agent.location}</option>
-                    )}
-                  </select>
-                </td>
+                {showLocationColumn && (
+                  <td className="px-4 py-3">
+                    <select
+                      value={agent.location || ""}
+                      onChange={(e) => setAgentLocation(agent, e.target.value)}
+                      className="w-full max-w-[160px] rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 outline-none focus:border-[#111111]"
+                    >
+                      <option value="">—</option>
+                      {locations.map((l) => (
+                        <option key={l.id} value={l.name}>
+                          {l.name}
+                        </option>
+                      ))}
+                      {agent.location && !locations.some((l) => l.name === agent.location) && (
+                        <option value={agent.location}>{agent.location}</option>
+                      )}
+                    </select>
+                  </td>
+                )}
                 {showContractDate && (
                   <td className="px-4 py-3">
                     <input
@@ -440,8 +493,8 @@ export default function Roster() {
             ))}
             {!loading && sorted.length === 0 && (
               <tr>
-                <td colSpan={showContractDate ? 8 : 7} className="px-4 py-10 text-center text-sm text-gray-400">
-                  {location
+                <td colSpan={colCount} className="px-4 py-10 text-center text-sm text-gray-400">
+                  {activeLocation
                     ? "No agents at this location yet. Add one above to get started."
                     : "Select a location above to see its roster."}
                 </td>
@@ -452,7 +505,11 @@ export default function Roster() {
       </div>
 
       {showImport && (
-        <ImportAgentsDialog onClose={() => setShowImport(false)} onImported={loadAgents} location={location} />
+        <ImportAgentsDialog
+          onClose={() => setShowImport(false)}
+          onImported={loadAgents}
+          location={activeLocation}
+        />
       )}
 
       {showLocations && (
@@ -461,6 +518,10 @@ export default function Roster() {
           onClose={() => setShowLocations(false)}
           onChanged={loadLocations}
         />
+      )}
+
+      {showAdmins && (
+        <AdminLocationsDialog locations={locations} onClose={() => setShowAdmins(false)} />
       )}
     </div>
   );

@@ -29,7 +29,7 @@ export default function LocationPicker({
         ))}
       </select>
       <span className="text-xs text-gray-500">
-        {locations.length === 0 ? "Add locations on the Roster page" : countLabel}
+        {locations.length === 0 ? "Add locations on the Admin page" : countLabel}
       </span>
     </div>
   );

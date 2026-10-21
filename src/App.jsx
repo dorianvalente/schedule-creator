@@ -9,8 +9,7 @@ import ScrollToTop from './components/ScrollToTop';
 // Add page imports here
 import Layout from '@/components/Layout';
 import Schedule from '@/pages/Schedule';
-import Roster from '@/pages/Roster';
-import Exclusions from '@/pages/Exclusions';
+import Admin from '@/pages/Admin';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
@@ -45,8 +44,7 @@ const AuthenticatedApp = () => {
     {/* Add your page Route elements here */}
     <Route element={<Layout />}>
       <Route path="/" element={<Schedule />} />
-      <Route path="/roster" element={<Roster />} />
-      <Route path="/exclusions" element={<Exclusions />} />
+      <Route path="/admin" element={<Admin />} />
     </Route>
     <Route path="/login" element={<Login />} />
     <Route path="/register" element={<Register />} />
