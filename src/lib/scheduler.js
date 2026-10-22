@@ -153,6 +153,23 @@ export function pairingTypeFor(agent1, agent2) {
   return `${ROLE_LABELS[roles[0]]} + ${ROLE_LABELS[roles[1]]}`;
 }
 
+// Contract date when one is on file, as a timestamp, otherwise null.
+function contractTime(agent) {
+  const date = agent?.contract_date ? new Date(agent.contract_date) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
+}
+
+// Newest first for picking a manager's own team: agents with a contract date
+// lead, most recently contracted first. Agents without one keep the date-added
+// order, since a contract date is the better record of who is newest.
+function newestFirst(a, b) {
+  const ca = contractTime(a);
+  const cb = contractTime(b);
+  if (ca !== null && cb !== null) return cb - ca;
+  if (ca !== null || cb !== null) return ca !== null ? -1 : 1;
+  return new Date(b.created_date || 0) - new Date(a.created_date || 0);
+}
+
 // Builds the week's pairings for the ride days a location runs.
 // `agentsPerManager` is how many agents a manager rides with over the week:
 // 1 = the same agent every day, 2 = the newest agent on their team on the first
@@ -213,8 +230,9 @@ export function autoAssign(
     });
   }
 
-  // 2a. Each manager takes their own team's newest agents first, so a manager
-  //     never loses their own agent to another pairing.
+  // 2a. Each manager takes their own team's newest agents first — by contract
+  //     date when one is on file, otherwise the date they were added — so a
+  //     manager never loses their own agent to another pairing.
   const picked = new Map();
   for (const m of managers) {
     const mates = [];
@@ -229,7 +247,7 @@ export function autoAssign(
       .sort(
         (a, b) =>
           Number(prefers(m.agent.id, b.agent.id)) - Number(prefers(m.agent.id, a.agent.id)) ||
-          new Date(b.agent.created_date) - new Date(a.agent.created_date)
+          newestFirst(a.agent, b.agent)
       );
     for (const c of team) {
       if (mates.length >= count) break;
