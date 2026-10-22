@@ -1,9 +1,9 @@
 // Pure auto-assign logic for ride-along pairings.
 // Roles: 'fm' | 'fd' | 'ad' | 'am' (managers) | 'one_month' | 'sna' | 'rpa' | 'tenured' | 'veteran'
 // Tenure ladder (least to most experienced): 1 Month Agent -> SNA -> RPA -> Tenured Agent -> Veteran.
-// Managers pair with the least experienced agents first; the rest are paired
-// least-experienced with most-experienced. A 1 Month, SNA or RPA agent is never
-// left riding alone while another agent is still free.
+// Managers ride with the newest agents — their own team's first — before anyone
+// else; the rest are paired least-experienced with most-experienced. A 1 Month,
+// SNA or RPA agent is never left riding alone while another agent is still free.
 
 export const ROLE_LABELS = {
   manager: "Manager",
@@ -304,18 +304,17 @@ export function autoAssign(agents, exclusions = [], preferred = [], days = DEFAU
   }
 
   // 2a. Each manager takes their own team's new agents first — 1 Month, SNA and
-  //     RPA — so a manager never loses their own agent to another pairing, and
-  //     more than one of them means a different one each ride day. Within a tier
-  //     the newest leads: by contract date when one is on file, otherwise the
-  //     date they were added, then tenure, which is the same "newest" the rest
-  //     of the app uses. The team's more experienced agents are left to ride
-  //     together.
+  //     RPA — so a manager never loses their own new agent to another pairing,
+  //     and more than one of them means a different one each ride day. Within a
+  //     tier the newest leads: by contract date when one is on file, otherwise
+  //     the date they were added, which is the same "newest" the rest of the app
+  //     uses. The team's more experienced agents are left to ride together.
   const picked = new Map();
   for (const m of managers) {
-    const mates = [];
     const team = others
       .filter(
         (x) =>
+          needsPartner(x.role) &&
           freeEveryDay(x.agent.id) &&
           onTeamOf(x.agent, m.agent) &&
           !isBlocked(x.agent.id, m.agent.id) &&
@@ -324,12 +323,12 @@ export function autoAssign(agents, exclusions = [], preferred = [], days = DEFAU
       .sort(
         (a, b) =>
           Number(prefers(m.agent.id, b.agent.id)) - Number(prefers(m.agent.id, a.agent.id)) ||
-          Number(needsPartner(b.role)) - Number(needsPartner(a.role)) ||
           newestFirst(a.agent, b.agent) ||
           ROLE_ORDER[a.role] - ROLE_ORDER[b.role] ||
           a.agent.name.localeCompare(b.agent.name)
       );
-    const slots = Math.min(team.filter((c) => needsPartner(c.role)).length > 1 ? 2 : 1, dayList.length);
+    const slots = Math.min(team.length > 1 ? 2 : 1, dayList.length);
+    const mates = [];
     for (const c of team) {
       if (mates.length >= slots) break;
       take(c.agent.id);
@@ -338,12 +337,21 @@ export function autoAssign(agents, exclusions = [], preferred = [], days = DEFAU
     picked.set(m.agent.id, { mates, slots });
   }
 
-  // 2b. Fill any open slots from the least experienced agents still free.
+  // 2b. Fill any open slots with the newest agents still free: a new agent — a
+  //     1 Month, SNA or RPA — leads ahead of an experienced one wherever they
+  //     are, then the manager's own team, then the most recently contracted, so
+  //     the newest agents are the ones who ride with a manager. A preferred
+  //     partner is taken before all of that.
   for (const m of managers) {
     const { mates, slots } = picked.get(m.agent.id);
-    // A preferred partner is taken before the usual least-experienced fill.
     const candidates = [...others].sort(
-      (a, b) => Number(prefers(m.agent.id, b.agent.id)) - Number(prefers(m.agent.id, a.agent.id))
+      (a, b) =>
+        Number(prefers(m.agent.id, b.agent.id)) - Number(prefers(m.agent.id, a.agent.id)) ||
+        Number(needsPartner(b.role)) - Number(needsPartner(a.role)) ||
+        Number(onTeamOf(b.agent, m.agent)) - Number(onTeamOf(a.agent, m.agent)) ||
+        newestFirst(a.agent, b.agent) ||
+        ROLE_ORDER[a.role] - ROLE_ORDER[b.role] ||
+        a.agent.name.localeCompare(b.agent.name)
     );
     for (const c of candidates) {
       if (mates.length >= slots) break;
