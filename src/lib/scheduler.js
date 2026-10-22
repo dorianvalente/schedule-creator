@@ -2,7 +2,8 @@
 // Roles: 'fm' | 'fd' | 'ad' | 'am' (managers) | 'one_month' | 'sna' | 'rpa' | 'tenured' | 'veteran'
 // Tenure ladder (least to most experienced): 1 Month Agent -> SNA -> RPA -> Tenured Agent -> Veteran.
 // Managers pair with the least experienced agents first; the rest are paired
-// least-experienced with most-experienced.
+// least-experienced with most-experienced. A 1 Month, SNA or RPA agent is never
+// left riding alone while another agent is still free.
 
 export const ROLE_LABELS = {
   manager: "Manager",
@@ -37,6 +38,14 @@ export const MANAGER_ROLES = ["manager", "fm", "fd", "ad", "am"];
 
 export function isManagerRole(role) {
   return MANAGER_ROLES.includes(role);
+}
+
+// Tiers that must always ride with a partner when one is available: a 1 Month,
+// SNA or RPA agent is never left riding alone.
+const NEW_TIER_ROLES = ["one_month", "sna", "rpa"];
+
+export function needsPartner(role) {
+  return NEW_TIER_ROLES.includes(role);
 }
 
 // Ride days a location can run, Monday first to match the week start.
@@ -263,6 +272,18 @@ export function autoAssign(
   const freeEveryDay = (id) => dayList.every((d) => free[d].has(id));
   const rideEveryDay = (pair) =>
     dayList.forEach((d) => out[d].push({ agent1: pair.agent1, agent2: pair.agent2 }));
+  // With an odd number of agents left over, one has to ride alone. That is
+  // never a 1 Month, SNA or RPA agent: the most experienced one sits out
+  // instead, so the new agents keep their partner. Returns that agent, or null
+  // when only new agents are left and one of them has to.
+  const sitOut = (list) => {
+    if (list.length % 2 === 0) return null;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (needsPartner(list[i].role)) continue;
+      return list.splice(i, 1)[0];
+    }
+    return null;
+  };
 
   // 1. Preferred pairings come first: whenever both agents are free on the days
   //    the pairing asked for and are not excluded, they ride together then.
@@ -340,8 +361,15 @@ export function autoAssign(
   // 3. Remaining agents pair least-experienced with most-experienced, keeping
   //    team mates together: an agent on the same team is preferred over one on
   //    a different team. An excluded pair is skipped and the least experienced
-  //    agent looks further down the list for a partner instead.
+  //    agent looks further down the list for a partner instead. An odd number
+  //    left means one agent sits the week out, and that is never a 1 Month, SNA
+  //    or RPA agent.
   const rest = others.filter((x) => freeEveryDay(x.agent.id));
+  const sittingOut = sitOut(rest);
+  if (sittingOut) {
+    rideEveryDay({ agent1: sittingOut.agent, agent2: null });
+    take(sittingOut.agent.id);
+  }
   while (rest.length > 1) {
     const first = rest.shift();
     const pick = pickPartner(first, rest, isBlocked, isDayLocked);
@@ -356,8 +384,10 @@ export function autoAssign(
     take(second.agent.id);
   }
 
-  // 4. Anyone still free on every ride day rides solo. Agents a day-specific
-  //    pairing left free on the other days are placed for those days only.
+  // 4. Anyone still free on every ride day rides solo — with the new agents
+  //    paired first, only a manager or an experienced agent is left here.
+  //    Agents a day-specific pairing left free on the other days are placed for
+  //    those days only.
   agents
     .filter((a) => freeEveryDay(a.id))
     .forEach((a) => {
@@ -367,6 +397,8 @@ export function autoAssign(
 
   for (const day of dayList) {
     const remaining = others.filter((x) => free[day].has(x.agent.id));
+    const daySittingOut = sitOut(remaining);
+    if (daySittingOut) out[day].push({ agent1: daySittingOut.agent, agent2: null });
     while (remaining.length > 1) {
       const first = remaining.shift();
       const pick = pickPartner(first, remaining, isBlocked, isDayLocked);
