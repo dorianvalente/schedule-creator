@@ -170,6 +170,33 @@ function newestFirst(a, b) {
   return new Date(b.created_date || 0) - new Date(a.created_date || 0);
 }
 
+// Team name of an agent, normalised for comparison ("" when none is set).
+function teamOf(agent) {
+  return String(agent?.team || "").trim().toLowerCase();
+}
+
+// Two agents are team mates when both name the same team.
+function sameTeam(a, b) {
+  const team = teamOf(a);
+  return !!team && team === teamOf(b);
+}
+
+// Partner for `first` out of `list`: a team mate wins over anyone on another
+// team, then the most experienced agent is chosen, skipping excluded pairs.
+// Returns the index in `list`, or -1 when nobody can ride with them.
+function pickPartner(first, list, isBlocked, isDayLocked) {
+  for (const wantTeam of [true, false]) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const other = list[i];
+      if (isBlocked(first.agent.id, other.agent.id)) continue;
+      if (isDayLocked(first.agent.id, other.agent.id)) continue;
+      if (wantTeam !== sameTeam(first.agent, other.agent)) continue;
+      return i;
+    }
+  }
+  return -1;
+}
+
 // Builds the week's pairings for the ride days a location runs.
 // `agentsPerManager` is how many agents a manager rides with over the week:
 // 1 = the same agent every day, 2 = the newest agent on their team on the first
@@ -277,19 +304,14 @@ export function autoAssign(
     dayList.forEach((d, i) => out[d].push({ agent1: m.agent, agent2: mates[i] || mates[0] }));
   }
 
-  // 3. Remaining agents pair least-experienced with most-experienced. An
-  //    excluded pair is skipped and the least experienced agent looks further
-  //    down the list for a partner instead.
+  // 3. Remaining agents pair least-experienced with most-experienced, keeping
+  //    team mates together: an agent on the same team is preferred over one on
+  //    a different team. An excluded pair is skipped and the least experienced
+  //    agent looks further down the list for a partner instead.
   const rest = others.filter((x) => freeEveryDay(x.agent.id));
   while (rest.length > 1) {
     const first = rest.shift();
-    let pick = -1;
-    for (let i = rest.length - 1; i >= 0; i--) {
-      if (isBlocked(first.agent.id, rest[i].agent.id)) continue;
-      if (isDayLocked(first.agent.id, rest[i].agent.id)) continue;
-      pick = i;
-      break;
-    }
+    const pick = pickPartner(first, rest, isBlocked, isDayLocked);
     if (pick === -1) {
       rideEveryDay({ agent1: first.agent, agent2: null });
       take(first.agent.id);
@@ -314,13 +336,7 @@ export function autoAssign(
     const remaining = others.filter((x) => free[day].has(x.agent.id));
     while (remaining.length > 1) {
       const first = remaining.shift();
-      let pick = -1;
-      for (let i = remaining.length - 1; i >= 0; i--) {
-        if (isBlocked(first.agent.id, remaining[i].agent.id)) continue;
-        if (isDayLocked(first.agent.id, remaining[i].agent.id)) continue;
-        pick = i;
-        break;
-      }
+      const pick = pickPartner(first, remaining, isBlocked, isDayLocked);
       if (pick === -1) {
         out[day].push({ agent1: first.agent, agent2: null });
         continue;
