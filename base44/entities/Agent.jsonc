@@ -8,8 +8,12 @@
     },
     "role": {
       "type": "string",
-      "description": "Tenure / role tier used for pairing",
+      "description": "Tenure / role tier used for pairing. fm, fd, ad and am are the manager types",
       "enum": [
+        "fm",
+        "fd",
+        "ad",
+        "am",
         "manager",
         "one_month",
         "sna",

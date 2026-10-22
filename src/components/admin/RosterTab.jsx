@@ -11,7 +11,14 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { ROLE_LABELS, ROLE_ORDER, TENURE_OPTIONS, effectiveRole, formatName } from "@/lib/scheduler";
+import {
+  ROLE_LABELS,
+  ROLE_ORDER,
+  TENURE_OPTIONS,
+  effectiveRole,
+  formatName,
+  isManagerRole,
+} from "@/lib/scheduler";
 import ImportAgentsDialog from "@/components/ImportAgentsDialog";
 import LocationManager from "@/components/LocationManager";
 import LocationPicker from "@/components/LocationPicker";
@@ -20,6 +27,10 @@ import ContractDateCell from "@/components/admin/ContractDateCell";
 
 const ROLE_STYLES = {
   manager: "bg-[#111111] text-white",
+  fm: "bg-slate-100 text-slate-800 border border-slate-200",
+  fd: "bg-slate-300 text-slate-900 border border-slate-400",
+  am: "bg-gray-500 text-white",
+  ad: "bg-[#111111] text-white",
   one_month: "bg-amber-100 text-amber-800 border border-amber-200",
   sna: "bg-sky-100 text-sky-800 border border-sky-200",
   rpa: "bg-violet-100 text-violet-800 border border-violet-200",
@@ -103,7 +114,7 @@ export default function RosterTab() {
     setEditingId(agent.id);
     setEditDraft({
       name: agent.name,
-      role: agent.role === "manager" || agent.manual_role ? agent.role : "auto",
+      role: isManagerRole(agent.role) || agent.manual_role ? agent.role : "auto",
       team: agent.team || "",
     });
   };
@@ -156,12 +167,12 @@ export default function RosterTab() {
   });
 
   const managerNames = locationAgents
-    .filter((a) => effectiveRole(a) === "manager")
+    .filter((a) => isManagerRole(effectiveRole(a)))
     .map((a) => a.name)
     .sort((a, b) => a.localeCompare(b));
 
   const counts = {
-    manager: locationAgents.filter((a) => effectiveRole(a) === "manager").length,
+    manager: locationAgents.filter((a) => isManagerRole(effectiveRole(a))).length,
     one_month: locationAgents.filter((a) => effectiveRole(a) === "one_month").length,
     sna: locationAgents.filter((a) => effectiveRole(a) === "sna").length,
     rpa: locationAgents.filter((a) => effectiveRole(a) === "rpa").length,
@@ -384,6 +395,10 @@ export default function RosterTab() {
                           {o.label}
                         </option>
                       ))}
+                      {editDraft.role !== "auto" &&
+                        !TENURE_OPTIONS.some((o) => o.value === editDraft.role) && (
+                          <option value={editDraft.role}>{ROLE_LABELS[editDraft.role]}</option>
+                        )}
                     </select>
                   ) : (
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_STYLES[effectiveRole(agent)]}`}>

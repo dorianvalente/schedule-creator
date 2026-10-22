@@ -4,7 +4,11 @@ import { base44 } from "@/api/base44Client";
 import { TENURE_OPTIONS, formatName } from "@/lib/scheduler";
 
 function normalizeRole(value) {
-  const v = String(value || "").toLowerCase();
+  const v = String(value || "").toLowerCase().trim();
+  if (v === "fm") return "fm";
+  if (v === "fd") return "fd";
+  if (v === "ad") return "ad";
+  if (v === "am") return "am";
   if (v.includes("manag")) return "manager";
   if (v.includes("vet")) return "veteran";
   if (v.includes("ten")) return "tenured";

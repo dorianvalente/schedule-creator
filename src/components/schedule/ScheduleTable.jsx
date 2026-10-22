@@ -11,6 +11,10 @@ const NONE = "__none__";
 
 const ROLE_CELL = {
   manager: "border-gray-300 bg-[#f1f1f1] text-[#111111]",
+  fm: "border-slate-200 bg-slate-100 text-slate-800",
+  fd: "border-slate-400 bg-slate-300 text-slate-900",
+  am: "border-gray-600 bg-gray-500 text-white",
+  ad: "border-black bg-[#111111] text-white",
   one_month: "border-amber-200 bg-amber-50 text-amber-900",
   sna: "border-sky-200 bg-sky-50 text-sky-900",
   rpa: "border-violet-200 bg-violet-50 text-violet-900",
@@ -20,6 +24,10 @@ const ROLE_CELL = {
 
 const ROLE_ROW = {
   manager: "bg-[#f4f4f5]",
+  fm: "bg-slate-50",
+  fd: "bg-slate-100",
+  am: "bg-gray-100",
+  ad: "bg-[#ececed]",
   one_month: "bg-amber-50",
   sna: "bg-sky-50",
   rpa: "bg-violet-50",
@@ -30,6 +38,10 @@ const ROLE_ROW = {
 // one color per agent inside the open list, so every name shows its own tenure
 const ROLE_OPTION = {
   manager: "bg-[#e9e9e9] text-[#111111] focus:bg-[#dedede] focus:text-[#111111]",
+  fm: "bg-slate-100 text-slate-900 focus:bg-slate-200 focus:text-slate-900",
+  fd: "bg-slate-200 text-slate-900 focus:bg-slate-300 focus:text-slate-900",
+  am: "bg-gray-400 text-white focus:bg-gray-500 focus:text-white",
+  ad: "bg-[#111111] text-white focus:bg-[#333] focus:text-white",
   one_month: "bg-amber-100 text-amber-900 focus:bg-amber-200 focus:text-amber-900",
   sna: "bg-sky-100 text-sky-900 focus:bg-sky-200 focus:text-sky-900",
   rpa: "bg-violet-100 text-violet-900 focus:bg-violet-200 focus:text-violet-900",

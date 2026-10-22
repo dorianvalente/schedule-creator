@@ -1,11 +1,15 @@
 // Pure auto-assign logic for ride-along pairings.
-// Roles: 'manager' | 'one_month' | 'sna' | 'rpa' | 'tenured'
+// Roles: 'fm' | 'fd' | 'ad' | 'am' (managers) | 'one_month' | 'sna' | 'rpa' | 'tenured' | 'veteran'
 // Tenure ladder (least to most experienced): 1 Month Agent -> SNA -> RPA -> Tenured Agent -> Veteran.
 // Managers pair with the least experienced agents first; the rest are paired
 // least-experienced with most-experienced.
 
 export const ROLE_LABELS = {
   manager: "Manager",
+  fm: "FM",
+  fd: "FD",
+  ad: "AD",
+  am: "AM",
   one_month: "1 Month Agent",
   sna: "SNA",
   rpa: "RPA",
@@ -13,7 +17,27 @@ export const ROLE_LABELS = {
   veteran: "Veteran",
 };
 
-export const ROLE_ORDER = { manager: 0, one_month: 1, sna: 2, rpa: 3, tenured: 4, veteran: 5 };
+export const ROLE_ORDER = {
+  manager: 0,
+  fm: 1,
+  fd: 2,
+  ad: 3,
+  am: 4,
+  one_month: 5,
+  sna: 6,
+  rpa: 7,
+  tenured: 8,
+  veteran: 9,
+};
+
+// The manager types. They all ride with the least experienced agents and take
+// their own team's agents before anyone else. "manager" stays for rosters set
+// up before the four types existed.
+export const MANAGER_ROLES = ["manager", "fm", "fd", "ad", "am"];
+
+export function isManagerRole(role) {
+  return MANAGER_ROLES.includes(role);
+}
 
 // Ride days a location can run, Monday first to match the week start.
 export const WEEKDAYS = [
@@ -47,12 +71,15 @@ export const DAY_OPTIONS = [
 // Tenure options for pickers. "auto" means "calculate from the date added".
 export const TENURE_OPTIONS = [
   { value: "auto", label: "Auto (by date)" },
+  { value: "fm", label: "FM" },
+  { value: "fd", label: "FD" },
+  { value: "ad", label: "AD" },
+  { value: "am", label: "AM" },
   { value: "one_month", label: "1 Month Agent" },
   { value: "sna", label: "SNA" },
   { value: "rpa", label: "RPA" },
   { value: "tenured", label: "Tenured Agent" },
   { value: "veteran", label: "Veteran" },
-  { value: "manager", label: "Manager" },
 ];
 
 // Months in the system needed to reach each tier.
@@ -87,7 +114,7 @@ export function tenureFromDate(createdDate, now = new Date()) {
 // honoured, everything else follows time in the system.
 export function effectiveRole(agent, now = new Date()) {
   if (!agent) return "one_month";
-  if (agent.role === "manager") return "manager";
+  if (isManagerRole(agent.role)) return agent.role;
   if (agent.manual_role) return agent.role;
   return tenureFromDate(agent.created_date, now);
 }
@@ -219,9 +246,9 @@ export function autoAssign(
   const dayLocked = offDayKeys(preferred);
   const isDayLocked = (aId, bId) => dayLocked.has(pairKey(aId, bId));
   const withRole = agents.map((agent) => ({ agent, role: effectiveRole(agent) }));
-  const managers = withRole.filter((x) => x.role === "manager");
+  const managers = withRole.filter((x) => isManagerRole(x.role));
   const others = withRole
-    .filter((x) => x.role !== "manager")
+    .filter((x) => !isManagerRole(x.role))
     .sort((a, b) => ROLE_ORDER[a.role] - ROLE_ORDER[b.role]);
   const byId = new Map(agents.map((a) => [a.id, a]));
   const otherIds = new Set(others.map((x) => x.agent.id));
