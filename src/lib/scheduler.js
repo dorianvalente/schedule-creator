@@ -77,9 +77,9 @@ export const DAY_OPTIONS = [
   ...WEEKDAYS.map((d) => ({ value: d, label: d })),
 ];
 
-// Tenure options for pickers. "auto" means "calculate from the date added".
+// Tenure options for pickers. "auto" means "calculate from the contract date".
 export const TENURE_OPTIONS = [
-  { value: "auto", label: "Auto (by date)" },
+  { value: "auto", label: "Auto (by contract date)" },
   { value: "fm", label: "FM" },
   { value: "fd", label: "FD" },
   { value: "ad", label: "AD" },
@@ -91,13 +91,15 @@ export const TENURE_OPTIONS = [
   { value: "veteran", label: "Veteran" },
 ];
 
-// Months in the system needed to reach each tier.
+// Whole months since the contract date needed to reach each tier: under a month
+// is a 1 Month Agent, then SNA at one month, RPA at four, Tenured Agent at six
+// and Veteran at a year.
 const TENURE_STEPS = [
   { months: 0, role: "one_month" },
   { months: 1, role: "sna" },
   { months: 4, role: "rpa" },
   { months: 6, role: "tenured" },
-  { months: 24, role: "veteran" },
+  { months: 12, role: "veteran" },
 ];
 
 // Whole months elapsed since a date.
@@ -109,9 +111,9 @@ function monthsSince(date, now) {
   return Math.max(0, months);
 }
 
-// Tenure tier implied by how long ago the agent was added.
-export function tenureFromDate(createdDate, now = new Date()) {
-  const months = monthsSince(createdDate, now);
+// Tenure tier implied by how long ago a date is, counted in whole months.
+export function tenureFromDate(date, now = new Date()) {
+  const months = monthsSince(date, now);
   let role = "one_month";
   for (const step of TENURE_STEPS) {
     if (months >= step.months) role = step.role;
@@ -119,11 +121,13 @@ export function tenureFromDate(createdDate, now = new Date()) {
   return role;
 }
 
-// The tenure actually used for an agent: managers are fixed, a manual role is
-// honoured, everything else follows time in the system.
+// The tenure actually used for an agent. Managers keep their type, a contract
+// date sets the tier from how long ago it was, and without one a manually
+// chosen tier is honoured, otherwise the date the agent was added counts.
 export function effectiveRole(agent, now = new Date()) {
   if (!agent) return "one_month";
   if (isManagerRole(agent.role)) return agent.role;
+  if (agent.contract_date) return tenureFromDate(agent.contract_date, now);
   if (agent.manual_role) return agent.role;
   return tenureFromDate(agent.created_date, now);
 }
