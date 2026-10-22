@@ -20,7 +20,6 @@ export default function Schedule() {
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [agentsPerManager, setAgentsPerManager] = useState(1);
   const [exclusions, setExclusions] = useState([]);
   const [preferred, setPreferred] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -121,7 +120,7 @@ export default function Schedule() {
           if (p.agent2Id) lockedIds.add(p.agent2Id);
         });
         const free = agentsAtLocation.filter((a) => !lockedIds.has(a.id));
-        const result = autoAssign(free, agentsPerManager, exclusions, preferred, days);
+        const result = autoAssign(free, exclusions, preferred, days);
         const auto = (result[day] || []).map((p) => ({
           id: nextId(),
           agent1Id: p.agent1?.id ?? null,
@@ -243,22 +242,6 @@ export default function Schedule() {
             >
               <ChevronRight className="h-4 w-4" />
             </button>
-          </div>
-          <div className="flex items-center gap-3 rounded-md border border-gray-200 bg-white px-3 py-2">
-            <span className="text-xs font-medium text-gray-500">Agents per manager</span>
-            {[1, 2].map((n) => (
-              <label key={n} className="flex cursor-pointer items-center gap-1.5 text-sm text-[#111111]">
-                <input
-                  type="radio"
-                  name="agents-per-manager"
-                  value={n}
-                  checked={agentsPerManager === n}
-                  onChange={() => setAgentsPerManager(n)}
-                  className="h-4 w-4 accent-[#111111]"
-                />
-                {n}
-              </label>
-            ))}
           </div>
           <button
             onClick={runAutoAssign}
