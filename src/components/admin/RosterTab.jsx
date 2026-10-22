@@ -43,9 +43,13 @@ export default function RosterTab() {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: "", role: "auto", team: "" });
 
-  // An admin with a location on their profile manages that location only.
-  const scope = me?.location || "";
-  const activeLocation = scope || location;
+  // An admin with locations on their profile manages those locations only.
+  const scope = (me?.locations || []).filter(Boolean);
+  const locked = scope.length === 1 ? scope[0] : "";
+  const activeLocation = locked || location;
+  const scopedLocations = scope.length
+    ? locations.filter((l) => scope.includes(l.name))
+    : locations;
 
   const loadAgents = async () => {
     setLoading(true);
@@ -72,8 +76,10 @@ export default function RosterTab() {
   }, []);
 
   useEffect(() => {
-    if (scope) setLocation(scope);
-  }, [scope]);
+    const allowed = (me?.locations || []).filter(Boolean);
+    if (allowed.length === 1) setLocation(allowed[0]);
+    else if (allowed.length > 1) setLocation((cur) => (allowed.includes(cur) ? cur : allowed[0]));
+  }, [me]);
 
   const addAgent = async () => {
     if (!draft.name.trim()) return;
@@ -83,7 +89,7 @@ export default function RosterTab() {
       role: isAuto ? "one_month" : draft.role,
       manual_role: !isAuto,
       team: draft.team.trim(),
-      location: scope || draft.location,
+      location: locked || draft.location,
       contract_date: draft.contract_date,
       fa: !!draft.fa,
       active: true,
@@ -163,7 +169,7 @@ export default function RosterTab() {
     veteran: locationAgents.filter((a) => effectiveRole(a) === "veteran").length,
   };
 
-  const showLocationColumn = !scope;
+  const showLocationColumn = scope.length === 0;
   const colCount = 7 + (showLocationColumn ? 1 : 0);
 
   return (
@@ -175,7 +181,7 @@ export default function RosterTab() {
             : "Select a location to manage its roster."}
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          {!scope && (
+          {scope.length === 0 && (
             <>
               <button
                 onClick={() => setShowLocations(true)}
@@ -213,17 +219,17 @@ export default function RosterTab() {
         </div>
       </div>
 
-      {scope ? (
+      {locked ? (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
           <Lock className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-medium text-[#111111]">{scope}</span>
+          <span className="text-sm font-medium text-[#111111]">{locked}</span>
           <span className="text-xs text-gray-500">
             You manage this location's roster only
           </span>
         </div>
       ) : (
         <LocationPicker
-          locations={locations}
+          locations={scopedLocations}
           value={location}
           onChange={setLocation}
           id="roster-location"
@@ -278,7 +284,7 @@ export default function RosterTab() {
                 ))}
               </select>
             </div>
-            {!scope && (
+            {!locked && (
               <div className="sm:w-44">
                 <label className="mb-1 block text-xs font-medium text-gray-500">Location</label>
                 <select
@@ -287,7 +293,7 @@ export default function RosterTab() {
                   className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]"
                 >
                   <option value="">No location</option>
-                  {locations.map((l) => (
+                  {scopedLocations.map((l) => (
                     <option key={l.id} value={l.name}>
                       {l.name}
                     </option>

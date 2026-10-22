@@ -8,9 +8,12 @@
         "user"
       ]
     },
-    "location": {
-      "type": "string",
-      "description": "Ride location this admin manages. When set, the admin can only see and manage that location's roster. Empty means every location."
+    "locations": {
+      "type": "array",
+      "description": "Ride locations this admin manages. When set, the admin can only see and manage the rosters of these locations. Empty means every location.",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [
