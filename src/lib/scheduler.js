@@ -286,7 +286,11 @@ export function autoAssign(
 
   // 2a. Each manager takes their own team's newest agents first — by contract
   //     date when one is on file, otherwise the date they were added — so a
-  //     manager never loses their own agent to another pairing.
+  //     manager never loses their own agent to another pairing, and with two
+  //     agents per manager the newest rides the first day, the next newest the
+  //     second. A roster imported in one go carries no dates to tell its agents
+  //     apart, so agents that are equally new are ranked by tenure, which is the
+  //     same "newest" the rest of the app uses.
   const picked = new Map();
   for (const m of managers) {
     const mates = [];
@@ -301,7 +305,9 @@ export function autoAssign(
       .sort(
         (a, b) =>
           Number(prefers(m.agent.id, b.agent.id)) - Number(prefers(m.agent.id, a.agent.id)) ||
-          newestFirst(a.agent, b.agent)
+          newestFirst(a.agent, b.agent) ||
+          ROLE_ORDER[a.role] - ROLE_ORDER[b.role] ||
+          a.agent.name.localeCompare(b.agent.name)
       );
     for (const c of team) {
       if (mates.length >= count) break;
