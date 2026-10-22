@@ -7,7 +7,6 @@ import {
   Check,
   Upload,
   MapPin,
-  CalendarDays,
   Lock,
   ShieldCheck,
 } from "lucide-react";
@@ -39,7 +38,6 @@ export default function RosterTab() {
   const [showAdmins, setShowAdmins] = useState(false);
   const [locations, setLocations] = useState([]);
   const [location, setLocation] = useState("");
-  const [showContractDate, setShowContractDate] = useState(true);
   const [draft, setDraft] = useState({ name: "", role: "auto", team: "", location: "", contract_date: "", fa: false });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ name: "", role: "auto", team: "" });
@@ -165,7 +163,7 @@ export default function RosterTab() {
   };
 
   const showLocationColumn = !scope;
-  const colCount = 6 + (showLocationColumn ? 1 : 0) + (showContractDate ? 1 : 0);
+  const colCount = 7 + (showLocationColumn ? 1 : 0);
 
   return (
     <div>
@@ -176,18 +174,6 @@ export default function RosterTab() {
             : "Select a location to manage its roster."}
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setShowContractDate((s) => !s)}
-            className={`inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
-              showContractDate
-                ? "border-[#111111] bg-gray-50 text-[#111111]"
-                : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
-            }`}
-            title={showContractDate ? "Hide contract date column" : "Show contract date column"}
-          >
-            <CalendarDays className="h-4 w-4" />
-            Contract date
-          </button>
           {!scope && (
             <>
               <button
@@ -314,6 +300,7 @@ export default function RosterTab() {
                 type="date"
                 value={draft.contract_date}
                 onChange={(e) => setDraft({ ...draft, contract_date: e.target.value })}
+                onBlur={(e) => setDraft((d) => ({ ...d, contract_date: e.target.value }))}
                 className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-[#111111]"
               />
             </div>
@@ -352,7 +339,7 @@ export default function RosterTab() {
               <th className="px-4 py-3 font-medium">Tenure</th>
               <th className="px-4 py-3 font-medium">Team</th>
               {showLocationColumn && <th className="px-4 py-3 font-medium">Location</th>}
-              {showContractDate && <th className="px-4 py-3 font-medium">Contract date</th>}
+              <th className="px-4 py-3 font-medium">Contract date</th>
               <th className="px-4 py-3 font-medium">FA</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 text-right font-medium">Actions</th>
@@ -439,16 +426,19 @@ export default function RosterTab() {
                     </select>
                   </td>
                 )}
-                {showContractDate && (
-                  <td className="px-4 py-3">
-                    <input
-                      type="date"
-                      value={(agent.contract_date || "").slice(0, 10)}
-                      onChange={(e) => setContractDate(agent, e.target.value)}
-                      className="w-full max-w-[150px] rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 outline-none focus:border-[#111111]"
-                    />
-                  </td>
-                )}
+                <td className="px-4 py-3">
+                  <input
+                    type="date"
+                    value={(agent.contract_date || "").slice(0, 10)}
+                    onChange={(e) => setContractDate(agent, e.target.value)}
+                    onBlur={(e) => {
+                      if (e.target.value !== (agent.contract_date || "").slice(0, 10)) {
+                        setContractDate(agent, e.target.value);
+                      }
+                    }}
+                    className="w-full max-w-[150px] rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 outline-none focus:border-[#111111]"
+                  />
+                </td>
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
