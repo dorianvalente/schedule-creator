@@ -16,6 +16,7 @@ import ImportAgentsDialog from "@/components/ImportAgentsDialog";
 import LocationManager from "@/components/LocationManager";
 import LocationPicker from "@/components/LocationPicker";
 import AdminLocationsDialog from "@/components/admin/AdminLocationsDialog";
+import ContractDateCell from "@/components/admin/ContractDateCell";
 
 const ROLE_STYLES = {
   manager: "bg-[#111111] text-white",
@@ -427,16 +428,9 @@ export default function RosterTab() {
                   </td>
                 )}
                 <td className="px-4 py-3">
-                  <input
-                    type="date"
-                    value={(agent.contract_date || "").slice(0, 10)}
-                    onChange={(e) => setContractDate(agent, e.target.value)}
-                    onBlur={(e) => {
-                      if (e.target.value !== (agent.contract_date || "").slice(0, 10)) {
-                        setContractDate(agent, e.target.value);
-                      }
-                    }}
-                    className="w-full max-w-[150px] rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 outline-none focus:border-[#111111]"
+                  <ContractDateCell
+                    value={agent.contract_date}
+                    onSave={(next) => setContractDate(agent, next)}
                   />
                 </td>
                 <td className="px-4 py-3">
