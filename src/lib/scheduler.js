@@ -305,10 +305,14 @@ export function autoAssign(agents, exclusions = [], preferred = [], days = DEFAU
 
   // 2a. Each manager takes their own team's new agents first — 1 Month, SNA and
   //     RPA — so a manager never loses their own new agent to another pairing,
-  //     and more than one of them means a different one each ride day. Within a
-  //     tier the newest leads: by contract date when one is on file, otherwise
-  //     the date they were added, which is the same "newest" the rest of the app
-  //     uses. The team's more experienced agents are left to ride together.
+  //     and more than one of them means a different one each ride day. An FM is
+  //     the exception: they keep one partner on every ride day, and it is their
+  //     own 1 Month agent whenever they have one, so that agent rides with them
+  //     both days and the team's SNAs and RPAs pair up inside the team instead.
+  //     Within a tier the newest leads: by contract date when one is on file,
+  //     otherwise the date they were added, which is the same "newest" the rest
+  //     of the app uses. The team's more experienced agents are left to ride
+  //     together.
   const picked = new Map();
   for (const m of managers) {
     const team = others
@@ -327,9 +331,13 @@ export function autoAssign(agents, exclusions = [], preferred = [], days = DEFAU
           ROLE_ORDER[a.role] - ROLE_ORDER[b.role] ||
           a.agent.name.localeCompare(b.agent.name)
       );
-    const slots = Math.min(team.length > 1 ? 2 : 1, dayList.length);
+    // An FM rides with their own 1 Month agent on both days: the same partner
+    // every ride day, and the team's other new agents do not take that seat.
+    const oneMonth = m.role === "fm" ? team.filter((c) => c.role === "one_month") : [];
+    const pool = oneMonth.length > 0 ? oneMonth : team;
+    const slots = Math.min(m.role === "fm" ? 1 : team.length > 1 ? 2 : 1, dayList.length);
     const mates = [];
-    for (const c of team) {
+    for (const c of pool) {
       if (mates.length >= slots) break;
       take(c.agent.id);
       mates.push(c.agent);
@@ -366,18 +374,21 @@ export function autoAssign(agents, exclusions = [], preferred = [], days = DEFAU
     dayList.forEach((d, i) => out[d].push({ agent1: m.agent, agent2: mates[i] || mates[0] }));
   }
 
-  // 3. The agents a manager left behind ride with their own team first, the most
-  //    experienced of a team together, so an outsider cannot split them. Whoever
-  //    is left pairs least-experienced with most-experienced, keeping team mates
-  //    together: an agent on the same team is preferred over one on a different
-  //    team. An excluded pair is skipped and the least experienced agent looks
-  //    further down the list for a partner instead. An odd number left means one
-  //    agent sits the week out, and that is never a 1 Month, SNA or RPA agent.
+  // 3. The agents a manager left behind ride with their own team first, so an
+  //    outsider cannot split them. The least experienced of a team takes the
+  //    next team mate up, which keeps a 1 Month, SNA or RPA agent with a team
+  //    mate — an SNA with an RPA or a tenured team mate — and leaves the most
+  //    experienced one over. Whoever is left pairs least-experienced with
+  //    most-experienced, keeping team mates together: an agent on the same team
+  //    is preferred over one on a different team. An excluded pair is skipped
+  //    and the least experienced agent looks further down the list for a
+  //    partner instead. An odd number left means one agent sits the week out,
+  //    and that is never a 1 Month, SNA or RPA agent.
   const rest = others.filter((x) => freeEveryDay(x.agent.id));
-  for (let i = rest.length - 1; i >= 0; i--) {
+  for (let i = 0; i < rest.length; i++) {
     if (!rest[i]) continue;
     let pick = -1;
-    for (let j = i - 1; j >= 0; j--) {
+    for (let j = i + 1; j < rest.length; j++) {
       const o = rest[j];
       if (!o) continue;
       if (!sameTeam(rest[i].agent, o.agent)) continue;
