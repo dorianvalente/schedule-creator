@@ -238,12 +238,14 @@ function pickPartner(first, list, isBlocked, isDayLocked) {
 }
 
 // Builds the week's pairings for the ride days a location runs.
-// A manager rides with a different new agent on each ride day when their team
-// has more than one (1 Month, SNA or RPA); with a single new agent, or none,
-// they keep that one partner and the team's more experienced agents ride
-// together. A preferred pairing with a specific day is only honoured on that
-// day; "Any" counts for every ride day. Two agents with a specific-day wish
-// never ride together on the other days.
+// A 1 Month agent rides with their manager on both ride days and that manager
+// keeps them for the week, whatever the manager's type. Without a 1 Month agent
+// a manager rides with a different new agent on each ride day when their team
+// has more than one (SNA or RPA); with a single new agent, or none, they keep
+// that one partner and the team's more experienced agents ride together. A
+// preferred pairing with a specific day is only honoured on that day; "Any"
+// counts for every ride day. Two agents with a specific-day wish never ride
+// together on the other days.
 export function autoAssign(agents, exclusions = [], preferred = [], days = DEFAULT_DAYS) {
   const dayList = days?.length ? days : DEFAULT_DAYS;
   const blocked = exclusionKeys(exclusions);
@@ -305,11 +307,11 @@ export function autoAssign(agents, exclusions = [], preferred = [], days = DEFAU
 
   // 2a. Each manager takes their own team's new agents first — 1 Month, SNA and
   //     RPA — so a manager never loses their own new agent to another pairing,
-  //     and more than one of them means a different one each ride day. An FM is
-  //     the exception: they keep one partner on every ride day, and it is their
-  //     own 1 Month agent whenever they have one, so that agent rides with them
-  //     both days and the team's SNAs and RPAs pair up inside the team instead.
-  //     Within a tier the newest leads: by contract date when one is on file,
+  //     and more than one of them means a different one each ride day. A 1 Month
+  //     agent is the exception, whatever the manager's type: the manager keeps
+  //     that same partner on every ride day, so the team's SNAs and RPAs pair up
+  //     inside the team instead of taking that seat. An FM keeps one partner in
+  //     any case. Within a tier the newest leads: by contract date when one is on file,
   //     otherwise the date they were added, which is the same "newest" the rest
   //     of the app uses. The team's more experienced agents are left to ride
   //     together.
@@ -331,11 +333,13 @@ export function autoAssign(agents, exclusions = [], preferred = [], days = DEFAU
           ROLE_ORDER[a.role] - ROLE_ORDER[b.role] ||
           a.agent.name.localeCompare(b.agent.name)
       );
-    // An FM rides with their own 1 Month agent on both days: the same partner
-    // every ride day, and the team's other new agents do not take that seat.
-    const oneMonth = m.role === "fm" ? team.filter((c) => c.role === "one_month") : [];
+    // A 1 Month agent rides with their manager on both days: the manager keeps
+    // that same partner every ride day, and the team's other new agents do not
+    // take that seat. An FM keeps a single partner even without one.
+    const oneMonth = team.filter((c) => c.role === "one_month");
     const pool = oneMonth.length > 0 ? oneMonth : team;
-    const slots = Math.min(m.role === "fm" ? 1 : team.length > 1 ? 2 : 1, dayList.length);
+    const single = m.role === "fm" || oneMonth.length > 0;
+    const slots = Math.min(single ? 1 : team.length > 1 ? 2 : 1, dayList.length);
     const mates = [];
     for (const c of pool) {
       if (mates.length >= slots) break;
