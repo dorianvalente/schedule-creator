@@ -3,7 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { CalendarDays, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-const navItems = [{ to: "/", label: "Schedule", icon: CalendarDays, end: true }];
+const navItems = [{ to: "/", label: "Schedule Creator", icon: CalendarDays, end: true }];
 
 const ADMIN_ITEM = { to: "/admin", label: "Admin", icon: ShieldCheck, end: false };
 
