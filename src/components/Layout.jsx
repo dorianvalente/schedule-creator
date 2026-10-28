@@ -27,7 +27,7 @@ export default function Layout() {
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-[#111111]">
               <CalendarDays className="h-4 w-4" />
             </div>
-            <span className="text-[15px] font-semibold tracking-tight">TeamPair Scheduler</span>
+            <span className="text-[15px] font-semibold tracking-tight">Schedule Creator</span>
           </div>
           <nav className="flex items-center gap-1">
             {items.map(({ to, label, icon: Icon, end }) => (
