@@ -221,7 +221,7 @@ export default function Schedule() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111]">Schedule Creator</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111111]">Riding Schedule</h1>
           <p className="mt-1 text-sm text-gray-500">
             Week of {format(weekStart, "MMM d")} · {location || "No location selected"} ·{" "}
             {agentsAtLocation.length} active agents
