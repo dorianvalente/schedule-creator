@@ -3,17 +3,20 @@ import { base44 } from "@/api/base44Client";
 import RosterTab from "@/components/admin/RosterTab";
 import ExclusionsTab from "@/components/admin/ExclusionsTab";
 import PreferredTab from "@/components/admin/PreferredTab";
+import DataTab from "@/components/admin/DataTab";
 
 const TABS = [
   { id: "roster", label: "Roster" },
   { id: "exclusions", label: "Exclusions" },
   { id: "preferred", label: "Preferred pairings" },
+  { id: "data", label: "Export & import" },
 ];
 
 const BLURBS = {
   roster: "Add agents, set their tenure and team, and keep each location's roster up to date.",
   exclusions: "Agents who should not work together. Auto-assign skips these pairs, and they cannot be picked manually on the schedule.",
   preferred: "Ideal pairings. Auto-assign puts these two together on their preferred day. Choose “Any day” to leave the day open.",
+  data: "Download your roster and schedule, or bring a backup from another copy of this app into this one.",
 };
 
 export default function Admin() {
@@ -70,6 +73,7 @@ export default function Admin() {
       {tab === "roster" && <RosterTab />}
       {tab === "exclusions" && <ExclusionsTab />}
       {tab === "preferred" && <PreferredTab />}
+      {tab === "data" && <DataTab />}
     </div>
   );
 }
